@@ -41,7 +41,9 @@ Rules:
 
 - Each version that gets pushed lives on its own branch named `release/x.y.z`, matching `package.json`.
 - Create the branch first, then set the version, then push.
+- `master` is the main branch. A release branch is merged into it once the version is verified (fast-forward when possible), and `master` is what gets deployed to production.
 
 | Version | Date | Contents |
 |---|---|---|
 | 0.1.0 | 2026-11-23 | First pushed version: login, curated map, add places from Google, edit (status, per-person rating, tags, notes), time and filter controls, GPS distance and saved starting points, Struk v2 design for web and mobile, light/dark map |
+| 0.1.1 | 2026-11-23 | Mobile sheet fixes: swipe down to collapse it to a small stub, more of the map visible, and the place actions (Open in Google Maps, Edit) always reachable above the iPhone browser bar |

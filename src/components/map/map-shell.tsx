@@ -10,15 +10,8 @@ import { FiltersDrawer } from "@/components/filters/filters-drawer"
 import { OriginDrawer } from "@/components/origin/origin-drawer"
 import { PlaceDetail } from "@/components/sheet/place-detail"
 import { PlaceList } from "@/components/sheet/place-list"
-import {
-  PanelTab,
-  PlaceSheet,
-  SidePanel,
-  SNAP_HALF,
-  SNAP_PEEK,
-  type SheetSnap,
-} from "@/components/sheet/place-sheet"
-import { ReceiptHeader } from "@/components/sheet/receipt-header"
+import { PanelTab, PlaceSheet, SidePanel, type SheetLevel } from "@/components/sheet/place-sheet"
+import { CollapsedBar, ReceiptHeader, ReceiptTitle } from "@/components/sheet/receipt-header"
 import { logout } from "@/app/login/actions"
 import { useFilters } from "@/hooks/use-filters"
 import { useGeolocation } from "@/hooks/use-geolocation"
@@ -76,7 +69,7 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
   const panelOpen = isDesktop && !panelHidden
   const [filters, setFilters] = useFilters()
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [snap, setSnap] = useState<SheetSnap>(SNAP_PEEK)
+  const [level, setLevel] = useState<SheetLevel>("peek")
   const [sortChoice, setSortChoice] = useState<SortKey | null>(null)
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -134,13 +127,14 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
     map.panTo(point)
     google.maps.event.addListenerOnce(map, "idle", () => {
       if (panelOpen) map.panBy(-SIDE_PANEL_PX / 2, 0)
-      else if (!isDesktop) map.panBy(0, Math.round(window.innerHeight * 0.25))
+      // sheet at "half" covers ~46% of the screen: center in the rest
+      else if (!isDesktop) map.panBy(0, Math.round(window.innerHeight * 0.23))
     })
   }
 
   /** Shows the details: half-opens the sheet (mobile) or re-opens the panel (web). */
   function reveal() {
-    if (!isDesktop) setSnap(SNAP_HALF)
+    if (!isDesktop) setLevel("half")
     else if (panelHidden) setPanelHidden(false)
   }
 
@@ -172,6 +166,7 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
 
   const header = (
     <ReceiptHeader
+      showTitle={isDesktop}
       target={target}
       label={label}
       time={filters.time}
@@ -200,18 +195,24 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
       onEdit={() => setEditing(true)}
     />
   ) : (
-    <PlaceList
-      pins={sorted}
-      sort={sort}
-      onSortChange={setSortChoice}
-      canSortByDistance={canSortByDistance}
-      totalPlaces={places.filter((p) => p.kind === "food").length}
-      openCount={openCount}
-      timeLabel={label}
-      onSelect={select}
-      onAdd={() => setAdding(true)}
-      onOpenFilters={() => setFiltering(true)}
-    />
+    <>
+      {/* mobile: the title scrolls with the list instead of taking sheet height */}
+      {!isDesktop && (
+        <ReceiptTitle target={target} time={filters.time} stay={filters.stay} className="pb-2.5 pt-1" />
+      )}
+      <PlaceList
+        pins={sorted}
+        sort={sort}
+        onSortChange={setSortChoice}
+        canSortByDistance={canSortByDistance}
+        totalPlaces={places.filter((p) => p.kind === "food").length}
+        openCount={openCount}
+        timeLabel={label}
+        onSelect={select}
+        onAdd={() => setAdding(true)}
+        onOpenFilters={() => setFiltering(true)}
+      />
+    </>
   )
 
   return (
@@ -221,7 +222,8 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
         camera={camera}
         onMapClick={() => {
           setSelectedId(null)
-          if (!isDesktop) setSnap(SNAP_PEEK)
+          // pull a raised sheet back down, but leave a collapsed one collapsed
+          if (!isDesktop) setLevel((l) => (l === "half" || l === "full" ? "peek" : l))
         }}
       >
         {origin.position && (
@@ -234,7 +236,7 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
             selected={pin.place.id === selectedId}
             onSelect={(id) => {
               setSelectedId(id)
-              if (isDesktop || snap === SNAP_PEEK) reveal()
+              if (isDesktop || level === "peek" || level === "collapsed") reveal()
             }}
           />
         ))}
@@ -295,7 +297,17 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
           {body}
         </SidePanel>
       ) : (
-        <PlaceSheet snap={snap} onSnapChange={setSnap} header={header}>
+        <PlaceSheet
+          level={level}
+          onLevelChange={setLevel}
+          header={
+            level === "collapsed" ? (
+              <CollapsedBar openCount={openCount} matchCount={matchCount} onExpand={() => setLevel("peek")} />
+            ) : (
+              header
+            )
+          }
+        >
           {body}
         </PlaceSheet>
       )}

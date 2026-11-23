@@ -139,29 +139,40 @@ export function PlaceDetail({
       <p className="text-center text-[11px] tracking-[0.14em] text-ink-muted">TERIMA KASIH · SELAMAT MAKAN</p>
       {place.address && <p className="text-center text-[11px] leading-relaxed text-ink-muted">{place.address}</p>}
 
-      <div className="mt-2 flex gap-1.5">
-        <a
-          href={mapsDirectionsUrl(place)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={cn(buttonVariants(), "h-12 flex-1 text-xs")}
-        >
-          <Navigation /> Open in Google Maps
-        </a>
-        <Button
-          variant="outline"
-          onClick={onEdit}
-          aria-label="Edit place"
-          className="size-12 [&_svg:not([class*='size-'])]:size-5"
-        >
-          <Pencil />
-        </Button>
-      </div>
       {status.tone === "open" && !trip && (
         <p className="text-center text-[11px] text-ink-muted">
           Set where you start to see distance and arrival time.
         </p>
       )}
+
+      {/*
+        Always within reach: sticks to the bottom of what is visible instead of
+        sitting at the end of a long scroll. On mobile the sheet sets
+        --sheet-offset / --sheet-gap so this clears the iPhone browser bar; on web
+        they are unset (0). The ::before strip paints the gap below the bar so
+        scrolled content doesn't show through it.
+      */}
+      <div className="sticky bottom-[calc(var(--sheet-offset,0px)+var(--sheet-gap,0px))] z-10 mt-2 bg-paper pb-2 pt-2 before:pointer-events-none before:absolute before:inset-x-0 before:top-full before:h-[var(--sheet-gap,0px)] before:bg-paper before:content-['']">
+        <Rule className="mb-2" />
+        <div className="flex gap-1.5">
+          <a
+            href={mapsDirectionsUrl(place)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(buttonVariants(), "h-12 flex-1 text-xs")}
+          >
+            <Navigation /> Open in Google Maps
+          </a>
+          <Button
+            variant="outline"
+            onClick={onEdit}
+            aria-label="Edit place"
+            className="size-12 [&_svg:not([class*='size-'])]:size-5"
+          >
+            <Pencil />
+          </Button>
+        </div>
+      </div>
     </section>
   )
 }

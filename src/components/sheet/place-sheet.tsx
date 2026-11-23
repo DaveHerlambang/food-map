@@ -2,35 +2,51 @@
 
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react"
 import { cn } from "cn"
+import { useMemo } from "react"
 import { Mark, VersionStamp, Zigzag } from "@/components/receipt/receipt"
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer"
+import { useBottomInset } from "@/hooks/use-bottom-inset"
 
-/**
- * Snap heights. Numbers > 1 are pixels, ≤ 1 are fractions of the viewport.
- * PEEK shows the whole receipt header (title, time buttons, TOTAL OPEN, actions).
- */
-export const SNAP_PEEK = 284
-export const SNAP_HALF = 0.55
-export const SNAP_FULL = 0.9
-export const SNAP_POINTS = [SNAP_PEEK, SNAP_HALF, SNAP_FULL]
+/** How far the receipt is pulled up on mobile. */
+export type SheetLevel = "collapsed" | "peek" | "half" | "full"
 
-export type SheetSnap = number | string
+const LEVELS: SheetLevel[] = ["collapsed", "peek", "half", "full"]
+
+// Heights: px, or a fraction of the screen (≤ 1). The two small ones get the
+// iPhone bottom inset added so they never sit under the home indicator / Safari bar.
+const COLLAPSED_PX = 58 // handle + one summary line
+const PEEK_PX = 176 // time buttons, TOTAL OPEN, actions
+const HALF = 0.46
+const FULL = 0.9
 
 /**
  * Mobile: the receipt slides up from the bottom over the map (non-modal, so the
- * map stays usable). It never closes — swiping below PEEK snaps back.
+ * map stays usable). It can be pulled up, or swiped down to a small stub that
+ * leaves the map almost fully visible. It never closes entirely.
  */
 export function PlaceSheet({
-  snap,
-  onSnapChange,
+  level,
+  onLevelChange,
   header,
   children,
 }: {
-  snap: SheetSnap
-  onSnapChange: (snap: SheetSnap) => void
+  level: SheetLevel
+  onLevelChange: (level: SheetLevel) => void
   header: React.ReactNode
   children: React.ReactNode
 }) {
+  const inset = useBottomInset()
+  const points = useMemo<Record<SheetLevel, number>>(
+    () => ({
+      collapsed: COLLAPSED_PX + inset,
+      peek: PEEK_PX + inset,
+      half: HALF,
+      full: FULL,
+    }),
+    [inset],
+  )
+  const snapPoints = useMemo(() => LEVELS.map((l) => points[l]), [points])
+
   return (
     <Drawer
       open
@@ -39,19 +55,30 @@ export function PlaceSheet({
       }}
       modal={false}
       disablePointerDismissal
-      snapPoints={SNAP_POINTS}
-      snapPoint={snap}
-      onSnapPointChange={(next) => onSnapChange(next ?? SNAP_PEEK)}
+      snapPoints={snapPoints}
+      snapPoint={points[level]}
+      onSnapPointChange={(next) => onLevelChange(LEVELS.find((l) => points[l] === next) ?? "peek")}
       showSwipeHandle
     >
       <DrawerContent className="drop-shadow-[0_-6px_24px_rgba(0,0,0,0.45)]">
         <DrawerTitle className="sr-only">Places</DrawerTitle>
         <div className="shrink-0 px-4 pt-1.5">{header}</div>
         {/*
-          The popup is full height and slid down to the snap point, so the
-          bottom (1 − SNAP_FULL) of it is always off-screen: pad for that.
+          The popup is always screen-tall and slid down to the current height, so the
+          bottom of this scroll area sits `--drawer-snap-point-offset` px BELOW the
+          screen. Padding by that amount (plus the iPhone inset) is what lets the end
+          of the content scroll into view. PlaceDetail's action bar reads the same
+          two variables to stay stuck to the visible bottom.
         */}
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[calc(10dvh+env(safe-area-inset-bottom)+1.5rem)]">
+        <div
+          style={
+            {
+              "--sheet-offset": "var(--drawer-snap-point-offset, 0px)",
+              "--sheet-gap": `calc(${inset}px + 0.75rem)`,
+            } as React.CSSProperties
+          }
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[calc(var(--sheet-offset)+var(--sheet-gap))]"
+        >
           {children}
           {/* mobile: the end of the receipt, bottom-left */}
           <VersionStamp className="mt-6" />

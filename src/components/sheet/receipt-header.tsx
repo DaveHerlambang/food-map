@@ -1,6 +1,7 @@
 "use client"
 
-import { Plus, SlidersHorizontal } from "lucide-react"
+import { ChevronUp, Plus, SlidersHorizontal } from "lucide-react"
+import { cn } from "cn"
 import { TimeChips } from "@/components/filters/time-chips"
 import { Leader, Mark, Rule } from "@/components/receipt/receipt"
 import { Button } from "@/components/ui/button"
@@ -8,11 +9,69 @@ import type { TimeChoice } from "@/lib/filters"
 import { receiptDate, receiptKm } from "@/lib/places/format"
 import type { Pin } from "@/lib/places/pins"
 
+/** Store name + the date/stay line. Printed at the top of the receipt. */
+export function ReceiptTitle({
+  target,
+  time,
+  stay,
+  className,
+}: {
+  target: Date | null
+  time: TimeChoice
+  stay: number
+  className?: string
+}) {
+  const dateLine = target ? receiptDate(target) : "…"
+  return (
+    <div className={cn("text-center", className)}>
+      <p className="text-[15px] font-bold tracking-[0.14em]">FOOD MAP</p>
+      <p className="text-[11px] text-ink-muted">
+        {time.kind === "now" ? "NOW · " : ""}
+        {dateLine} · STAY {stay === 0 ? "ANY" : `${stay} MIN`}
+      </p>
+    </div>
+  )
+}
+
 /**
- * Top of the receipt: store name, date line, time buttons, TOTAL OPEN and the
- * three actions. Shared by the mobile sheet (its peek height) and the web panel.
+ * Mobile, sheet swiped all the way down: just the name and the open count, so
+ * the map is almost fully visible. Tap to bring the receipt back.
+ */
+export function CollapsedBar({
+  openCount,
+  matchCount,
+  onExpand,
+}: {
+  openCount: number
+  matchCount: number
+  onExpand: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onExpand}
+      aria-label={`Show the list (${openCount} of ${matchCount} open)`}
+      className="flex w-full items-center justify-between gap-3 rounded-sm px-1 pb-2 pt-1 text-left"
+    >
+      <span className="text-[13px] font-bold tracking-[0.14em]">FOOD MAP</span>
+      <span className="flex items-center gap-2 text-[13px] font-bold">
+        <span>
+          <Mark>{openCount}</Mark> OPEN
+        </span>
+        <span className="font-normal text-ink-muted">/ {matchCount}</span>
+        <ChevronUp aria-hidden="true" className="size-5 text-ink-muted" />
+      </span>
+    </button>
+  )
+}
+
+/**
+ * Time buttons, TOTAL OPEN and the three actions. On web it also carries the
+ * title (the panel is tall); on mobile the title moves into the scrolling list
+ * so the sheet's resting height stays small and the map stays big.
  */
 export function ReceiptHeader({
+  showTitle,
   target,
   label,
   time,
@@ -28,6 +87,7 @@ export function ReceiptHeader({
   onFilters,
   onAdd,
 }: {
+  showTitle: boolean
   target: Date | null
   label: string
   time: TimeChoice
@@ -43,18 +103,14 @@ export function ReceiptHeader({
   onFilters: () => void
   onAdd: () => void
 }) {
-  const dateLine = target ? receiptDate(target) : "…"
-
   return (
     <div className="flex flex-col gap-2.5 pb-3">
-      <div className="text-center">
-        <p className="text-[15px] font-bold tracking-[0.14em]">FOOD MAP</p>
-        <p className="text-[11px] text-ink-muted">
-          {time.kind === "now" ? "NOW · " : ""}
-          {dateLine} · STAY {stay === 0 ? "ANY" : `${stay} MIN`}
-        </p>
-      </div>
-      <Rule />
+      {showTitle && (
+        <>
+          <ReceiptTitle target={target} time={time} stay={stay} />
+          <Rule />
+        </>
+      )}
       <TimeChips value={time} label={label} onChange={onTimeChange} />
 
       <Leader
