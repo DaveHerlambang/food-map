@@ -19,6 +19,8 @@ The map shows only our own pins, centered on Surabaya. Not a native app: it runs
 - Opening hours are stored as minute-of-week intervals `[open, close)`; `close` may exceed 10080 for hours that wrap past Saturday night. Mall tenants without hours of their own inherit the mall's.
 - Ratings are per person; wishlist/visited status is shared.
 - Data from Google stays fresh without spending the free quota: a daily cron (`/api/cron/daily`, scheduled in `vercel.json`) refreshes places not synced for 25 days (Google allows keeping coordinates for 30), oldest first, at most 10 per run. The same run touches the database so the free Supabase project never pauses for inactivity. A place can also be refreshed by hand from its detail. Hours typed in by hand and a mall's hours are never overwritten; places Google reports as closed (permanently or temporarily) show as closed whatever their hours.
+- Tags are grouped by category (type, cuisine, ambient, other) in the pickers. A place with a drink or dessert tag gets a pink pin (name half); closed or unknown ones stay muted. Tag names ignore case, spaces and hyphens, so "Street Food" and `street-food` are the same tag.
+- Prices follow Google: `$` to `$$$$` (Google's four paid levels) plus Google's price range in rupiah. A level can be set by hand per place and Google's refreshes never overwrite it; the list can be filtered by level.
 - UI language is English. Design is **Struk v2**: a cashier's receipt on a map (IBM Plex Mono, paper and ink, lime highlighter for open, Barbados red for closing soon).
 
 ## Configuration
@@ -62,3 +64,4 @@ Rules:
 | 0.1.1 | 2026-11-23 | Mobile sheet fixes: swipe down to collapse it to a small stub, more of the map visible, and the place actions (Open in Google Maps, Edit) always reachable above the iPhone browser bar |
 | 0.1.2 | 2026-11-23 | Pins are rectangles with the closing time and the place name (time part lime when open, Barbados when closing soon, muted when closed; closed pins hide when they overlap); one sheet model for list and place: the header is always the drag handle, a selected place gets its own header with × and its actions, and selecting no longer resizes the sheet |
 | 0.2.0 | 2026-11-23 | Daily cron: keeps the free Supabase project awake and refreshes stale Google data (25 days, max 10 per run); "Refresh" button per place; places Google reports as closed show as closed |
+| 0.3.0 | 2026-11-23 | Tag categories (type, cuisine, ambient, other) with a larger starter set and Coffee merged into cafe; drink and dessert tags tint the pin pink; prices from Google (`$`–`$$$$` and the rupiah range) with a manual override and a price filter |

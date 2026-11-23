@@ -26,7 +26,11 @@ export type Filters = {
   openOnly: boolean
   status: StatusFilter
   tags: number[]
+  /** price levels to show ($ = 1 … $$$$ = 4); empty = any */
+  price: number[]
 }
+
+export const PRICE_LEVELS = [1, 2, 3, 4] as const
 
 export const DEFAULT_FILTERS: Filters = {
   time: { kind: "now" },
@@ -35,6 +39,7 @@ export const DEFAULT_FILTERS: Filters = {
   openOnly: false,
   status: "all",
   tags: [],
+  price: [],
 }
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/
@@ -113,6 +118,15 @@ export function parseFilters(params: URLSearchParams): Filters {
     .map(Number)
     .filter((n) => Number.isInteger(n) && n > 0)
 
+  f.price = [
+    ...new Set(
+      (params.get("price") ?? "")
+        .split(",")
+        .map(Number)
+        .filter((n) => (PRICE_LEVELS as readonly number[]).includes(n)),
+    ),
+  ].sort((a, b) => a - b)
+
   return f
 }
 
@@ -126,6 +140,7 @@ export function serializeFilters(f: Filters): string {
   if (f.openOnly) p.set("open", "1")
   if (f.status !== "all") p.set("status", f.status)
   if (f.tags.length) p.set("tags", f.tags.join(","))
+  if (f.price.length) p.set("price", f.price.join(","))
   return p.toString()
 }
 
@@ -135,6 +150,7 @@ export function activeFilterCount(f: Filters): number {
     Number(f.stay !== DEFAULT_FILTERS.stay) +
     Number(f.openOnly) +
     Number(f.status !== "all") +
-    Number(f.tags.length > 0)
+    Number(f.tags.length > 0) +
+    Number(f.price.length > 0)
   )
 }

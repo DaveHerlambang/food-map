@@ -4,6 +4,7 @@ import { cn } from "cn"
 import { Leader, Mark, Rule, StatusText } from "@/components/receipt/receipt"
 import { Button } from "@/components/ui/button"
 import { pinStatus, receiptKm } from "@/lib/places/format"
+import { dollars } from "@/lib/price"
 import { SORT_LABELS, type Pin, type SortKey } from "@/lib/places/pins"
 
 /** The line items: every place as a numbered receipt row. */
@@ -81,6 +82,7 @@ export function PlaceList({
             const voided = status.tone === "closed"
             const meta = [
               pin.trip && status.tone !== "closed" ? `${pin.trip.minutes} MIN` : null,
+              dollars(pin.place.priceLevel),
               pin.place.status === "visited" ? "VISITED" : "WISHLIST",
             ].filter(Boolean)
             return (

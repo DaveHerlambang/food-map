@@ -18,6 +18,8 @@ export type Pin = {
   arrival: Date
   /** Google says it is closed for good / for now: overrides the opening hours */
   closure: "permanent" | "temporary" | null
+  /** has a tag that tints the pin (drink, dessert) */
+  tinted: boolean
 }
 
 function closureOf(businessStatus: string | null): Pin["closure"] {
@@ -34,7 +36,7 @@ export function computePins(
   places: Place[],
   targetMs: number,
   origin: LatLng | null,
-  filters: Pick<Filters, "stay" | "status" | "tags">,
+  filters: Pick<Filters, "stay" | "status" | "tags" | "price">,
 ): Pin[] {
   const soon = Math.max(60, filters.stay) // amber = closes within the hour or before you'd finish
   return places
@@ -52,8 +54,12 @@ export function computePins(
         state.minutesLeft >= Math.max(filters.stay, 1)
       const matches =
         (filters.status === "all" || place.status === filters.status) &&
-        (filters.tags.length === 0 || place.tags.some((tag) => filters.tags.includes(tag.id)))
-      return { place, t, state, fits, matches, trip, arrival, closure }
+        (filters.tags.length === 0 || place.tags.some((tag) => filters.tags.includes(tag.id))) &&
+        // places with no price at all can't match a price filter
+        (filters.price.length === 0 ||
+          (place.priceLevel !== null && filters.price.includes(place.priceLevel)))
+      const tinted = place.tags.some((tag) => tag.tintsPin)
+      return { place, t, state, fits, matches, trip, arrival, closure, tinted }
     })
 }
 

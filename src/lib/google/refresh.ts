@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { fromGooglePeriods } from "@/lib/hours"
 import type { HoursSource } from "@/lib/places/types"
+import { levelFromGoogle, parseGoogleRange } from "@/lib/price"
 import { isGone, refreshesHours } from "@/lib/refresh-policy"
 import { getPlaceDetails, GooglePlacesError } from "./places"
 
@@ -42,7 +43,11 @@ export async function refreshPlaceFromGoogle(
   const intervals = periods?.length ? fromGooglePeriods(periods) : null
   const hours = refreshesHours(place.hoursSource) ? intervals : null // null = leave hours alone
 
-  const { error } = await supabase.rpc("apply_google_refresh", {
+  // Google's view of the price: written as-is, even when Google has none. What
+  // you set by hand lives in another column and is never touched here.
+  const range = parseGoogleRange(details.priceRange)
+
+  const { error } = await supabase.rpc("apply_google_refresh_v2", {
     p_place_id: place.id,
     p_lat: details.location.latitude,
     p_lng: details.location.longitude,
@@ -52,6 +57,10 @@ export async function refreshPlaceFromGoogle(
     p_business_status: details.businessStatus ?? null,
     p_hours: hours ? hours.map((i) => ({ open: i.open, close: i.close })) : null,
     p_hours_source: hours ? "google" : null,
+    p_price_level: levelFromGoogle(details.priceLevel),
+    p_price_min: range?.min ?? null,
+    p_price_max: range?.max ?? null,
+    p_price_currency: range?.currency ?? null,
   })
   if (error) return { ok: false, gone: false, error: `database: ${error.message}` }
 

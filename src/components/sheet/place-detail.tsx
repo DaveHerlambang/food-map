@@ -8,6 +8,7 @@ import { DAY, formatClock, hoursForDay } from "@/lib/hours"
 import { clock, mapsDirectionsUrl, pinStatus, receiptKm } from "@/lib/places/format"
 import type { Pin } from "@/lib/places/pins"
 import type { Person } from "@/lib/places/types"
+import { dollars, formatPriceRange } from "@/lib/price"
 import { GoogleSync } from "./google-sync"
 
 const DAY_NAMES = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
@@ -155,6 +156,18 @@ export function PlaceDetail({
       {trip && (
         <KV label="From">
           <span className="uppercase">{originLabel}</span>
+        </KV>
+      )}
+      {(place.priceLevel !== null || place.priceRange) && (
+        <KV label="Price">
+          {dollars(place.priceLevel) && <span className="font-bold">{dollars(place.priceLevel)}</span>}
+          {place.priceRange && (
+            <span>
+              {dollars(place.priceLevel) ? " · " : ""}
+              {formatPriceRange(place.priceRange)}
+            </span>
+          )}
+          {place.priceManual !== null && <span className="text-ink-muted"> · SET BY YOU</span>}
         </KV>
       )}
       <KV label={`Hours (${DAY_NAMES[day]})`}>

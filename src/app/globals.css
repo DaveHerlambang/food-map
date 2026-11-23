@@ -18,6 +18,7 @@
   --color-asphalt: var(--asphalt);
   --color-lime: var(--lime);
   --color-barbados: var(--barbados);
+  --color-tint: var(--tint);
 
   /* everything drawn ON the map: switches with the light/dark map theme */
   --color-map: var(--map);
@@ -69,6 +70,7 @@
   --asphalt: #17171a;
   --lime: #cdd78a; /* highlighter, never text on paper */
   --barbados: #aa0a27; /* 7:1 on paper */
+  --tint: #ebc1c8; /* name half of a drink / dessert pin; ink on it is ~11:1 */
 
   --background: var(--paper);
   --foreground: var(--ink);

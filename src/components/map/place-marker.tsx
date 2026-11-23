@@ -17,7 +17,9 @@ import type { Pin } from "@/lib/places/pins"
  *
  * Left (time): lime when open ("02:00" / "24H"), Barbados red when closing soon,
  * muted "CLOSED" or dashed "--:--" otherwise. Right (name): paper and ink,
- * truncated with "…" so long names stay short. Distance lives in the list.
+ * truncated with "…" so long names stay short; pink instead of paper when the
+ * place has a tag that tints the pin (drink, dessert) and is open. Closed and
+ * unknown pins stay muted whatever their tags. Distance lives in the list.
  *
  * Open and closing-soon pins always show; closed and unknown ones step aside
  * (hide) when they would overlap another pin, so the city view stays readable.
@@ -38,7 +40,7 @@ export function PlaceMarker({
   selected: boolean
   onSelect: (id: string) => void
 }) {
-  const { place, state } = pin
+  const { place, state, tinted } = pin
   const dim = state.status === "closed" || state.status === "unknown"
 
   return (
@@ -78,7 +80,7 @@ export function PlaceMarker({
               "min-w-0 truncate border-l-[1.5px] px-1.5 py-[3px] text-[10px] uppercase tracking-[0.02em]",
               dim
                 ? "border-pin-dim-border bg-chrome font-medium text-pin-dim"
-                : "border-ink bg-paper font-bold text-ink",
+                : cn("border-ink font-bold text-ink", tinted ? "bg-tint" : "bg-paper"),
             )}
           >
             {place.name}

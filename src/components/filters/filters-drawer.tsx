@@ -4,7 +4,14 @@ import { cn } from "cn"
 import { Rule, SectionLabel } from "@/components/receipt/receipt"
 import { Button } from "@/components/ui/button"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
-import { DEFAULT_FILTERS, STAY_OPTIONS, type Filters, type StatusFilter } from "@/lib/filters"
+import { TagPicker } from "@/components/tags/tag-picker"
+import {
+  DEFAULT_FILTERS,
+  PRICE_LEVELS,
+  STAY_OPTIONS,
+  type Filters,
+  type StatusFilter,
+} from "@/lib/filters"
 import type { Tag } from "@/lib/places/types"
 
 const toggle = "rounded-sm border-[1.5px] border-ink text-xs font-bold uppercase transition-colors"
@@ -29,6 +36,14 @@ export function FiltersDrawer({
   function toggleTag(id: number) {
     set({
       tags: filters.tags.includes(id) ? filters.tags.filter((t) => t !== id) : [...filters.tags, id],
+    })
+  }
+
+  function togglePrice(level: number) {
+    set({
+      price: filters.price.includes(level)
+        ? filters.price.filter((p) => p !== level)
+        : [...filters.price, level].sort((a, b) => a - b),
     })
   }
 
@@ -72,21 +87,33 @@ export function FiltersDrawer({
             />
           </Field>
 
+          <Field
+            label="Price"
+            hint="Places at any of the selected levels. Places with no price are hidden while one is selected."
+          >
+            <div className="grid grid-cols-4 gap-1.5">
+              {PRICE_LEVELS.map((level) => (
+                <button
+                  key={level}
+                  type="button"
+                  aria-pressed={filters.price.includes(level)}
+                  aria-label={`${"$".repeat(level)}`}
+                  onClick={() => togglePrice(level)}
+                  className={cn(toggle, "h-11 px-1", filters.price.includes(level) ? on : off)}
+                >
+                  {"$".repeat(level)}
+                </button>
+              ))}
+            </div>
+          </Field>
+
           {tags.length > 0 && (
             <Field label="Tags" hint="Places with any of the selected tags.">
-              <div className="flex flex-wrap gap-1.5">
-                {tags.map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    aria-pressed={filters.tags.includes(t.id)}
-                    onClick={() => toggleTag(t.id)}
-                    className={cn(toggle, "h-9 px-3", filters.tags.includes(t.id) ? on : off)}
-                  >
-                    #{t.name.replace(/\s+/g, "")}
-                  </button>
-                ))}
-              </div>
+              <TagPicker
+                tags={tags}
+                isSelected={(id) => filters.tags.includes(id)}
+                onToggle={toggleTag}
+              />
             </Field>
           )}
         </div>

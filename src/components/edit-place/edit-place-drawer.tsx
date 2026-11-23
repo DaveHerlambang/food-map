@@ -7,8 +7,11 @@ import { Rule, SectionLabel } from "@/components/receipt/receipt"
 import { Button } from "@/components/ui/button"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import { Input } from "@/components/ui/input"
+import { TagPicker } from "@/components/tags/tag-picker"
 import { createTag, deletePlace, updatePlace } from "@/lib/actions/places"
 import type { Place, PlaceStatus, Tag } from "@/lib/places/types"
+import { dollars, formatPriceRange } from "@/lib/price"
+import { CATEGORY_LABELS, TAG_CATEGORIES, type TagCategory } from "@/lib/tag-categories"
 
 export function EditPlaceDrawer({
   place,
@@ -66,14 +69,21 @@ function EditForm({
   const [rating, setRating] = useState<number | null>(
     place.ratings.find((r) => r.userId === userId)?.rating ?? null,
   )
+  const [price, setPrice] = useState<number | null>(place.priceManual) // null = AUTO (Google's)
   const [extraTags, setExtraTags] = useState<Tag[]>([]) // created in this session
   const [newTag, setNewTag] = useState("")
+  const [newCategory, setNewCategory] = useState<TagCategory>("other")
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saving, startSaving] = useTransition()
   const [tagging, startTagging] = useTransition()
 
   const tags = [...allTags, ...extraTags.filter((t) => !allTags.some((a) => a.id === t.id))]
+
+  // What AUTO resolves to, so choosing it is an informed choice.
+  const googlePrice = [dollars(place.priceGoogleLevel), place.priceRange ? formatPriceRange(place.priceRange) : null]
+    .filter(Boolean)
+    .join(" · ")
 
   function toggleTag(id: number) {
     setTagIds((prev) => {
@@ -88,7 +98,7 @@ function EditForm({
     const name = newTag.trim()
     if (!name) return
     startTagging(async () => {
-      const result = await createTag(name)
+      const result = await createTag(name, newCategory)
       if (!result.ok) return setError(result.error)
       setExtraTags((prev) => [...prev, result.tag])
       setTagIds((prev) => new Set(prev).add(result.tag.id))
@@ -105,6 +115,7 @@ function EditForm({
         tagIds: [...tagIds],
         // kept even if switched back to wishlist, so a mis-tap doesn't lose it
         rating,
+        price,
       })
       if (!result.ok) return setError(result.error)
       onDone()
@@ -173,20 +184,29 @@ function EditForm({
         )}
 
         <section className="flex flex-col gap-2">
-          <SectionLabel>Tags</SectionLabel>
-          <div className="flex flex-wrap gap-1.5">
-            {tags.map((t) => (
+          <SectionLabel>Price</SectionLabel>
+          <div className="grid grid-cols-5 gap-1.5" role="group" aria-label="Price">
+            {([null, 1, 2, 3, 4] as const).map((v) => (
               <button
-                key={t.id}
+                key={String(v)}
                 type="button"
-                aria-pressed={tagIds.has(t.id)}
-                onClick={() => toggleTag(t.id)}
-                className={cn(toggle, "h-9 px-3", tagIds.has(t.id) ? on : off)}
+                aria-pressed={price === v}
+                aria-label={v === null ? "Auto, follow Google" : "$".repeat(v)}
+                onClick={() => setPrice(v)}
+                className={cn(toggle, "h-11 px-1", price === v ? on : off)}
               >
-                #{t.name.replace(/\s+/g, "")}
+                {v === null ? "AUTO" : "$".repeat(v)}
               </button>
             ))}
           </div>
+          <p className="text-[12px] text-ink-muted">
+            AUTO follows Google: {googlePrice || "no price listed"}.
+          </p>
+        </section>
+
+        <section className="flex flex-col gap-2">
+          <SectionLabel>Tags</SectionLabel>
+          <TagPicker tags={tags} isSelected={(id) => tagIds.has(id)} onToggle={toggleTag} />
           <div className="flex gap-1.5">
             <Input
               value={newTag}
@@ -211,6 +231,24 @@ function EditForm({
             >
               {tagging ? <LoaderCircle className="animate-spin" /> : <Plus />} Add
             </Button>
+          </div>
+          <div className="flex flex-wrap items-center gap-1" role="radiogroup" aria-label="Category of the new tag">
+            <span className="mr-1 text-[10px] font-bold tracking-[0.14em] text-ink-muted">NEW TAG IN</span>
+            {TAG_CATEGORIES.map((c) => (
+              <button
+                key={c}
+                type="button"
+                role="radio"
+                aria-checked={newCategory === c}
+                onClick={() => setNewCategory(c)}
+                className={cn(
+                  "h-7 rounded-sm px-2 text-[10px] font-bold",
+                  newCategory === c ? "bg-ink text-paper" : "text-ink hover:bg-paper-2",
+                )}
+              >
+                {CATEGORY_LABELS[c]}
+              </button>
+            ))}
           </div>
         </section>
 

@@ -80,13 +80,21 @@ describe("URL round-trip", () => {
       openOnly: true,
       status: "visited",
       tags: [1, 4],
+      price: [2, 3],
     }
     assert.deepEqual(parseFilters(new URLSearchParams(serializeFilters(f))), f)
-    assert.equal(activeFilterCount(f), 4)
+    assert.equal(activeFilterCount(f), 5)
   })
 
   test("garbage in the URL is ignored", () => {
-    const f = parseFilters(new URLSearchParams("at=25:99&from=x&stay=7&status=nope&tags=a,-1,3"))
-    assert.deepEqual(f, { ...DEFAULT_FILTERS, tags: [3] })
+    const f = parseFilters(
+      new URLSearchParams("at=25:99&from=x&stay=7&status=nope&tags=a,-1,3&price=0,5,x,2"),
+    )
+    assert.deepEqual(f, { ...DEFAULT_FILTERS, tags: [3], price: [2] })
+  })
+
+  test("price levels are deduplicated and sorted", () => {
+    assert.deepEqual(parseFilters(new URLSearchParams("price=3,1,3,2")).price, [1, 2, 3])
+    assert.equal(serializeFilters({ ...DEFAULT_FILTERS, price: [1, 4] }), "price=1%2C4")
   })
 })

@@ -1,9 +1,19 @@
 import type { Interval } from "@/lib/hours"
+import type { PriceRange } from "@/lib/price"
+import type { TagCategory } from "@/lib/tag-categories"
 
 export type PlaceStatus = "wishlist" | "visited"
 export type HoursSource = "google" | "manual" | "inherit" | "unknown"
 
-export type Tag = { id: number; name: string; emoji: string | null }
+export type Tag = {
+  id: number
+  name: string
+  emoji: string | null
+  /** how the pickers group it */
+  category: TagCategory
+  /** places with this tag get a tinted pin (drink, dessert) */
+  tintsPin: boolean
+}
 
 /** A member of the couple, for showing ratings by name. */
 export type Person = { id: string; name: string }
@@ -31,6 +41,14 @@ export type Place = {
   businessStatus: string | null
   /** When the Google data was last refreshed; null = never (or not from Google). */
   googleSyncedAt: string | null
+  /** Price level shown ($ = 1 … $$$$ = 4): what you set by hand, else Google's. null = unknown. */
+  priceLevel: number | null
+  /** Google's own level: what "AUTO" resolves to when editing */
+  priceGoogleLevel: number | null
+  /** The level you set by hand; null = following Google */
+  priceManual: number | null
+  /** Google's price range, e.g. Rp 25.000–50.000 */
+  priceRange: PriceRange | null
   tags: Tag[]
   ratings: { userId: string; rating: number }[]
 }

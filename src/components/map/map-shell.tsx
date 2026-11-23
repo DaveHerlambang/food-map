@@ -105,9 +105,9 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
             places,
             targetMs,
             originLat !== null && originLng !== null ? { lat: originLat, lng: originLng } : null,
-            { stay: filters.stay, status: filters.status, tags: filters.tags },
+            { stay: filters.stay, status: filters.status, tags: filters.tags, price: filters.price },
           ),
-    [places, targetMs, originLat, originLng, filters.stay, filters.status, filters.tags],
+    [places, targetMs, originLat, originLng, filters.stay, filters.status, filters.tags, filters.price],
   )
 
   const shown = pins.filter((p) => p.matches && (!filters.openOnly || p.fits))

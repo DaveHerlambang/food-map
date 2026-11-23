@@ -6,8 +6,11 @@ import { isUuid, type LatLng } from "@/lib/geo"
 import { getPlaceDetails } from "@/lib/google/places"
 import { refreshPlaceFromGoogle } from "@/lib/google/refresh"
 import { fromGooglePeriods } from "@/lib/hours"
+import { TAG_SELECT, toTag, type RawTag } from "@/lib/places/queries"
 import type { HoursSource, PlaceStatus, Tag } from "@/lib/places/types"
+import { levelFromGoogle, parseGoogleRange } from "@/lib/price"
 import { cooldownRemainingMin } from "@/lib/refresh-policy"
+import { isTagCategory, normalizeTagName, type TagCategory } from "@/lib/tag-categories"
 
 export type AddPlaceResult =
   | ({ ok: true; placeId: string; existed: boolean } & LatLng)
@@ -56,6 +59,7 @@ export async function addPlaceFromGoogle(
   const intervals = periods?.length ? fromGooglePeriods(periods) : null
   const lat = details.location.latitude
   const lng = details.location.longitude
+  const range = parseGoogleRange(details.priceRange)
 
   const { data: inserted, error } = await supabase
     .from("places")
@@ -68,6 +72,10 @@ export async function addPlaceFromGoogle(
       category: details.primaryType ?? null,
       business_status: details.businessStatus ?? null,
       hours_source: intervals ? "google" : "unknown",
+      price_level: levelFromGoogle(details.priceLevel),
+      price_min: range?.min ?? null,
+      price_max: range?.max ?? null,
+      price_currency: range?.currency ?? null,
       google_synced_at: new Date().toISOString(),
     })
     .select("id")
@@ -108,6 +116,8 @@ export type PlaceEdit = {
   tagIds: number[]
   /** Your own rating; null removes it. */
   rating: number | null
+  /** Price level you set by hand ($ = 1 … $$$$ = 4); null = use Google's. */
+  price: number | null
 }
 
 /** Saves the edit form: status + notes, tag set, and the caller's own rating. */
@@ -128,10 +138,14 @@ export async function updatePlace(placeId: string, edit: PlaceEdit): Promise<Act
   if (rating !== null && !(Number.isInteger(rating) && rating >= 1 && rating <= 5)) {
     return { ok: false, error: "Rating must be 1–5." }
   }
+  const price = edit.price
+  if (price !== null && !(Number.isInteger(price) && price >= 1 && price <= 4)) {
+    return { ok: false, error: "Price must be $ to $$$$." }
+  }
 
   const { data: updated, error } = await supabase
     .from("places")
-    .update({ status: edit.status, notes: notes || null })
+    .update({ status: edit.status, notes: notes || null, price_manual: price })
     .eq("id", placeId)
     .select("id")
   if (error) return fail("update place", error)
@@ -168,28 +182,32 @@ export async function updatePlace(placeId: string, edit: PlaceEdit): Promise<Act
 
 export type CreateTagResult = { ok: true; tag: Tag } | { ok: false; error: string }
 
-/** Creates a tag, or returns the existing one if the name matches (case-insensitive). */
-export async function createTag(rawName: string): Promise<CreateTagResult> {
+/**
+ * Creates a tag in a category, or returns the existing one if the name matches
+ * (ignoring case, spaces and hyphens: "Street Food" is "street-food").
+ */
+export async function createTag(rawName: string, category: TagCategory): Promise<CreateTagResult> {
   const member = await getMember()
   if (!member) return { ok: false, error: "Not signed in." }
   const { supabase } = member
 
   const name = typeof rawName === "string" ? rawName.trim().replace(/\s+/g, " ") : ""
   if (!name || name.length > 30) return { ok: false, error: "Tag names are 1–30 characters." }
+  if (!isTagCategory(category)) return { ok: false, error: "Pick a category." }
 
-  // A handful of tags at most, so comparing in JS is simpler than escaping ILIKE.
-  const { data: all, error: listError } = await supabase.from("tags").select("id, name, emoji")
+  // A few dozen tags at most, so comparing in JS is simpler than escaping ILIKE.
+  const { data: all, error: listError } = await supabase.from("tags").select(TAG_SELECT)
   if (listError) return fail("list tags", listError)
-  const existing = (all as Tag[]).find((t) => t.name.toLowerCase() === name.toLowerCase())
-  if (existing) return { ok: true, tag: existing }
+  const existing = (all as RawTag[]).find((t) => normalizeTagName(t.name) === normalizeTagName(name))
+  if (existing) return { ok: true, tag: toTag(existing) }
 
   const { data: tag, error } = await supabase
     .from("tags")
-    .insert({ name })
-    .select("id, name, emoji")
+    .insert({ name, category })
+    .select(TAG_SELECT)
     .single()
   if (error) return fail("create tag", error)
-  return { ok: true, tag: tag as Tag }
+  return { ok: true, tag: toTag(tag as RawTag) }
 }
 
 export async function deletePlace(placeId: string): Promise<ActionResult> {

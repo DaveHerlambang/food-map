@@ -7,11 +7,13 @@
  * - Autocomplete + Details share one `sessionToken`, so the keystroke requests
  *   are free when the session ends in a Details call.
  * - Details is billed at the highest tier of the requested fields.
- *   `regularOpeningHours` makes it "Place Details Enterprise" (1,000 free/month).
+ *   `regularOpeningHours`, `priceLevel` and `priceRange` all sit in "Place Details
+ *   Enterprise" (1,000 free/month), so asking for prices costs nothing extra.
  *   Do NOT add Atmosphere fields (reviews, photos, servesBeer…) or use "*".
  */
 import type { GooglePeriod } from "@/lib/hours"
 import type { LatLng } from "@/lib/geo"
+import type { GoogleMoney } from "@/lib/price"
 
 const BASE = "https://places.googleapis.com/v1"
 
@@ -23,6 +25,8 @@ const DETAILS_FIELD_MASK = [
   "primaryType",
   "businessStatus",
   "regularOpeningHours",
+  "priceLevel",
+  "priceRange",
 ].join(",")
 
 function apiKey(): string {
@@ -112,6 +116,9 @@ export type PlaceDetails = {
   primaryType?: string
   businessStatus?: string
   regularOpeningHours?: { periods?: GooglePeriod[] }
+  /** e.g. "PRICE_LEVEL_MODERATE" */
+  priceLevel?: string
+  priceRange?: { startPrice?: GoogleMoney; endPrice?: GoogleMoney }
 }
 
 /**

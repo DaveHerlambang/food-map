@@ -1,6 +1,26 @@
 import type { Interval } from "@/lib/hours"
 import { createClient } from "@/lib/supabase/server"
+import { tagCategoryOf } from "@/lib/tag-categories"
 import type { Anchor, HoursSource, Person, Place, PlaceStatus, Tag } from "./types"
+
+/** A tag row as the database returns it. */
+export type RawTag = {
+  id: number
+  name: string
+  emoji: string | null
+  category: string | null
+  tints_pin: boolean | null
+}
+
+export const TAG_SELECT = "id, name, emoji, category, tints_pin"
+
+export const toTag = (r: RawTag): Tag => ({
+  id: r.id,
+  name: r.name,
+  emoji: r.emoji,
+  category: tagCategoryOf(r.category),
+  tintsPin: r.tints_pin === true,
+})
 
 type Row = {
   id: string
@@ -18,16 +38,22 @@ type Row = {
   hours_source: HoursSource
   business_status: string | null
   google_synced_at: string | null
+  price_level: number | null
+  price_min: number | string | null
+  price_max: number | string | null
+  price_currency: string | null
+  price_manual: number | null
   place_hours: { open_min: number; close_min: number }[]
-  place_tags: { tags: Tag | null }[]
+  place_tags: { tags: RawTag | null }[]
   place_ratings: { user_id: string; rating: number }[]
 }
 
 const SELECT = `
   id, google_place_id, name, address, lat, lng, category, kind, parent_id,
   time_zone, status, notes, hours_source, business_status, google_synced_at,
+  price_level, price_min, price_max, price_currency, price_manual,
   place_hours ( open_min, close_min ),
-  place_tags ( tags ( id, name, emoji ) ),
+  place_tags ( tags ( ${TAG_SELECT} ) ),
   place_ratings ( user_id, rating )
 `
 
@@ -54,9 +80,9 @@ export async function getAnchors(): Promise<Anchor[]> {
 
 export async function getTags(): Promise<Tag[]> {
   const supabase = await createClient()
-  const { data, error } = await supabase.from("tags").select("id, name, emoji").order("name")
+  const { data, error } = await supabase.from("tags").select(TAG_SELECT).order("name")
   if (error) throw new Error(`Failed to load tags: ${error.message}`)
-  return data as Tag[]
+  return (data as RawTag[]).map(toTag)
 }
 
 /** All places (≈ a few hundred rows at most) — filtering happens in memory on the client. */
@@ -100,7 +126,19 @@ export async function getPlaces(): Promise<Place[]> {
     hours: effectiveHours(r),
     businessStatus: r.business_status,
     googleSyncedAt: r.google_synced_at,
-    tags: r.place_tags.flatMap((t) => (t.tags ? [t.tags] : [])),
+    priceLevel: r.price_manual ?? r.price_level,
+    priceGoogleLevel: r.price_level,
+    priceManual: r.price_manual,
+    // numeric columns may arrive as strings
+    priceRange:
+      r.price_currency && (r.price_min !== null || r.price_max !== null)
+        ? {
+            min: r.price_min === null ? null : Number(r.price_min),
+            max: r.price_max === null ? null : Number(r.price_max),
+            currency: r.price_currency,
+          }
+        : null,
+    tags: r.place_tags.flatMap((t) => (t.tags ? [toTag(t.tags)] : [])),
     ratings: r.place_ratings.map((x) => ({ userId: x.user_id, rating: x.rating })),
   }))
 }
