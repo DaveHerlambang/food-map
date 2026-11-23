@@ -1,26 +1,136 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+ * Struk v2 — the whole app is a cashier's receipt on a dark map.
+ * Paper + ink, one lime highlighter for "open", Barbados red for "closing soon".
+ * Lime is too light to be text on paper: it only ever sits BEHIND ink.
+ */
 
 @theme inline {
+  /* receipt palette */
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-rule: var(--rule);
+  --color-asphalt: var(--asphalt);
+  --color-lime: var(--lime);
+  --color-barbados: var(--barbados);
+
+  /* everything drawn ON the map: switches with the light/dark map theme */
+  --color-map: var(--map);
+  --color-chrome: var(--chrome);
+  --color-chrome-fg: var(--chrome-fg);
+  --color-chrome-hover: var(--chrome-hover);
+  --color-pin-dim: var(--pin-dim);
+  --color-pin-dim-border: var(--pin-dim-border);
+
+  /* shadcn tokens, mapped onto the receipt */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --font-sans: var(--font-plex);
+  --font-mono: var(--font-plex);
+  --font-heading: var(--font-plex);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --paper: #f1ede4;
+  --paper-2: #e6e0d3;
+  --ink: #1d1d1f;
+  --ink-muted: #5f5b53; /* 5.7:1 on paper */
+  --rule: #b9b2a4; /* decorative only (dashes, leaders) */
+  --asphalt: #17171a;
+  --lime: #cdd78a; /* highlighter, never text on paper */
+  --barbados: #aa0a27; /* 7:1 on paper */
+
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: var(--paper);
+  --card-foreground: var(--ink);
+  --popover: var(--paper);
+  --popover-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: var(--paper);
+  --secondary: var(--paper-2);
+  --secondary-foreground: var(--ink);
+  --muted: var(--paper-2);
+  --muted-foreground: var(--ink-muted);
+  --accent: var(--paper-2);
+  --accent-foreground: var(--ink);
+  --destructive: var(--barbados);
+  --border: var(--rule);
+  --input: var(--ink);
+  --ring: var(--ink);
+  --radius: 0.25rem;
+
+  /* map theme: dark (default, for night use) */
+  --map: var(--asphalt);
+  --chrome: var(--asphalt); /* floating controls on the map */
+  --chrome-fg: var(--paper);
+  --chrome-hover: #232327;
+  --pin-dim: #8e8e96; /* closed / unknown pins */
+  --pin-dim-border: #4a4a50;
+}
+
+/* map theme: light. Set on <html> by the toggle (and an inline script on load).
+   The receipt itself stays paper + ink in both themes. */
+:root[data-map-theme="light"] {
+  --map: #ddd6c7; /* = natural.land in the "curated light" cloud style */
+  --chrome: var(--paper);
+  --chrome-fg: var(--ink);
+  --chrome-hover: var(--paper-2);
+  --pin-dim: var(--ink-muted);
+  --pin-dim-border: #9a9384;
+}
+
+/* Torn-paper edges. 12px teeth, 6px deep, always paper-colored. */
+@utility zigzag-top {
+  height: 10px;
+  background: conic-gradient(from 135deg at top, var(--paper) 90deg, #0000 0) 0 0 / 12px 100% repeat-x;
+}
+@utility zigzag-bottom {
+  height: 10px;
+  background: conic-gradient(from -45deg at bottom, var(--paper) 90deg, #0000 0) 0 0 / 12px 100% repeat-x;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+  mark {
+    color: inherit;
+  }
 }

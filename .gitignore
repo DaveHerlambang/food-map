@@ -36,6 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# supabase: migrations and seed stay local (seed.sql contains a user UID)
+/supabase/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
