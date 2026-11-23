@@ -5,9 +5,10 @@ import { cn } from "cn"
 import { Barcode, KV, Rule, StatusText } from "@/components/receipt/receipt"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { DAY, formatClock, hoursForDay } from "@/lib/hours"
-import { clock, mapsDirectionsUrl, receiptKm, receiptStatus } from "@/lib/places/format"
+import { clock, mapsDirectionsUrl, pinStatus, receiptKm } from "@/lib/places/format"
 import type { Pin } from "@/lib/places/pins"
 import type { Person } from "@/lib/places/types"
+import { GoogleSync } from "./google-sync"
 
 const DAY_NAMES = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
 
@@ -26,8 +27,8 @@ export function PlaceHeader({
   onClose: () => void
   onEdit: () => void
 }) {
-  const { place, state, t, trip, fits } = pin
-  const status = receiptStatus(state, t, fits)
+  const { place, trip } = pin
+  const status = pinStatus(pin)
 
   return (
     <div className="flex flex-col gap-2.5 pb-3">
@@ -95,8 +96,8 @@ export function PlaceDetail({
   people: Person[]
   userId: string
 }) {
-  const { place, state, t, trip, arrival, fits } = pin
-  const status = receiptStatus(state, t, fits)
+  const { place, state, t, trip, arrival } = pin
+  const status = pinStatus(pin)
   const day = Math.floor(t / DAY)
   const dayHours = place.hours ? hoursForDay(place.hours, day) : []
 
@@ -199,6 +200,13 @@ export function PlaceDetail({
       <Barcode className="mt-2 self-center" />
       <p className="text-center text-[11px] tracking-[0.14em] text-ink-muted">TERIMA KASIH · SELAMAT MAKAN</p>
       {place.address && <p className="text-center text-[11px] leading-relaxed text-ink-muted">{place.address}</p>}
+
+      {place.googlePlaceId && (
+        <>
+          <Rule />
+          <GoogleSync placeId={place.id} syncedAt={place.googleSyncedAt} />
+        </>
+      )}
     </section>
   )
 }

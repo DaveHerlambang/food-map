@@ -3,7 +3,7 @@
 import { cn } from "cn"
 import { Leader, Mark, Rule, StatusText } from "@/components/receipt/receipt"
 import { Button } from "@/components/ui/button"
-import { receiptKm, receiptStatus } from "@/lib/places/format"
+import { pinStatus, receiptKm } from "@/lib/places/format"
 import { SORT_LABELS, type Pin, type SortKey } from "@/lib/places/pins"
 
 /** The line items: every place as a numbered receipt row. */
@@ -77,7 +77,7 @@ export function PlaceList({
       ) : (
         <ol className="flex flex-col">
           {pins.map((pin, i) => {
-            const status = receiptStatus(pin.state, pin.t, pin.fits)
+            const status = pinStatus(pin)
             const voided = status.tone === "closed"
             const meta = [
               pin.trip && status.tone !== "closed" ? `${pin.trip.minutes} MIN` : null,

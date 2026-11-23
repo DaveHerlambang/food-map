@@ -4,8 +4,10 @@ import { refresh } from "next/cache"
 import { getMember } from "@/lib/auth"
 import { isUuid, type LatLng } from "@/lib/geo"
 import { getPlaceDetails } from "@/lib/google/places"
+import { refreshPlaceFromGoogle } from "@/lib/google/refresh"
 import { fromGooglePeriods } from "@/lib/hours"
-import type { PlaceStatus, Tag } from "@/lib/places/types"
+import type { HoursSource, PlaceStatus, Tag } from "@/lib/places/types"
+import { cooldownRemainingMin } from "@/lib/refresh-policy"
 
 export type AddPlaceResult =
   | ({ ok: true; placeId: string; existed: boolean } & LatLng)
@@ -198,6 +200,45 @@ export async function deletePlace(placeId: string): Promise<ActionResult> {
   // Hours, tags and ratings go with it (ON DELETE CASCADE).
   const { error } = await member.supabase.from("places").delete().eq("id", placeId)
   if (error) return fail("delete place", error)
+
+  refresh()
+  return { ok: true }
+}
+
+/**
+ * "Refresh" button: re-fetch one place from Google right now (one billable
+ * Place Details call). Same code path as the daily cron.
+ */
+export async function refreshPlace(placeId: string): Promise<ActionResult> {
+  const member = await getMember()
+  if (!member) return { ok: false, error: "Not signed in." }
+  if (!isUuid(placeId)) return { ok: false, error: "Invalid place." }
+
+  const { data: row, error } = await member.supabase
+    .from("places")
+    .select("id, google_place_id, hours_source, google_synced_at")
+    .eq("id", placeId)
+    .maybeSingle()
+  if (error) return fail("load place to refresh", error)
+  if (!row) return { ok: false, error: "This place no longer exists." }
+  if (!row.google_place_id) return { ok: false, error: "This place isn't linked to Google." }
+
+  // One tap is one billable call: ignore accidental repeats.
+  const wait = cooldownRemainingMin(row.google_synced_at, Date.now())
+  if (wait > 0) return { ok: false, error: `Already refreshed. Try again in ${wait} min.` }
+
+  const result = await refreshPlaceFromGoogle(member.supabase, {
+    id: row.id,
+    googlePlaceId: row.google_place_id,
+    hoursSource: row.hours_source as HoursSource,
+  })
+  if (!result.ok) {
+    console.error("[places] refresh", result.error)
+    return {
+      ok: false,
+      error: result.gone ? "Google no longer lists this place." : "Couldn't reach Google. Try again.",
+    }
+  }
 
   refresh()
   return { ok: true }

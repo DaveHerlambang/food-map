@@ -16,6 +16,14 @@ export type Pin = {
   matches: boolean
   trip: Trip | null
   arrival: Date
+  /** Google says it is closed for good / for now: overrides the opening hours */
+  closure: "permanent" | "temporary" | null
+}
+
+function closureOf(businessStatus: string | null): Pin["closure"] {
+  if (businessStatus === "CLOSED_PERMANENTLY") return "permanent"
+  if (businessStatus === "CLOSED_TEMPORARILY") return "temporary"
+  return null
 }
 
 /**
@@ -35,14 +43,17 @@ export function computePins(
       const trip = origin ? estimateTrip(origin, place) : null
       const arrival = new Date(targetMs + (trip ? trip.minutes * 60_000 : 0))
       const t = minuteOfWeek(arrival, place.timeZone)
-      const state = getOpenState(place.hours, t, soon)
+      const closure = closureOf(place.businessStatus)
+      const state: OpenState = closure
+        ? { status: "closed", opensIn: null, opensAt: null }
+        : getOpenState(place.hours, t, soon)
       const fits =
         (state.status === "open" || state.status === "closing") &&
         state.minutesLeft >= Math.max(filters.stay, 1)
       const matches =
         (filters.status === "all" || place.status === filters.status) &&
         (filters.tags.length === 0 || place.tags.some((tag) => filters.tags.includes(tag.id)))
-      return { place, t, state, fits, matches, trip, arrival }
+      return { place, t, state, fits, matches, trip, arrival, closure }
     })
 }
 

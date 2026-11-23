@@ -1,5 +1,6 @@
 import { formatKm } from "@/lib/geo"
 import { DAY, formatClock, type OpenState } from "@/lib/hours"
+import type { Pin } from "./pins"
 import type { Place } from "./types"
 
 const DAY_NAMES = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
@@ -37,6 +38,19 @@ export function receiptStatus(state: OpenState, t: number, fits: boolean): { ton
         text: `CLOSES ${formatClock(state.closesAt ?? 0)}${fits ? "" : " · TOO SHORT"}`,
       }
   }
+}
+
+/**
+ * Status line for a pin. Google's "closed for good / for now" wins over the
+ * opening hours, which may still be on file.
+ */
+export function pinStatus(pin: Pick<Pin, "state" | "t" | "fits" | "closure">): {
+  tone: Tone
+  text: string
+} {
+  if (pin.closure === "permanent") return { tone: "closed", text: "VOID · CLOSED FOR GOOD" }
+  if (pin.closure === "temporary") return { tone: "closed", text: "VOID · TEMPORARILY CLOSED" }
+  return receiptStatus(pin.state, pin.t, pin.fits)
 }
 
 /** Time part of a map pin: until when you can go. */

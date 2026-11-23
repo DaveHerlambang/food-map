@@ -28,7 +28,7 @@ import { usePersistentFlag } from "@/hooks/use-persistent-flag"
 import { useNow } from "@/hooks/use-now"
 import { activeFilterCount, resolveTarget, targetLabel } from "@/lib/filters"
 import type { LatLng } from "@/lib/geo"
-import { pinLabel, receiptStatus } from "@/lib/places/format"
+import { pinLabel, pinStatus } from "@/lib/places/format"
 import { computePins, sortPins, type Pin, type SortKey } from "@/lib/places/pins"
 import type { Anchor, Person, Place, Tag } from "@/lib/places/types"
 import { DEFAULT_CAMERA, MapCanvas, type Camera } from "./map-canvas"
@@ -213,7 +213,7 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
       label={`Show ${selected.place.name}`}
       onExpand={() => setLevel("peek")}
     >
-      <StatusText tone={receiptStatus(selected.state, selected.t, selected.fits).tone}>
+      <StatusText tone={pinStatus(selected).tone}>
         {pinLabel(selected.state)}
       </StatusText>
     </CollapsedBar>

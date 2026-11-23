@@ -18,7 +18,20 @@ The map shows only our own pins, centered on Surabaya. Not a native app: it runs
 - Open state is evaluated at **arrival time** (chosen time + estimated travel time), and a place counts as open only if it stays open for the **whole stay** (default 45 min).
 - Opening hours are stored as minute-of-week intervals `[open, close)`; `close` may exceed 10080 for hours that wrap past Saturday night. Mall tenants without hours of their own inherit the mall's.
 - Ratings are per person; wishlist/visited status is shared.
+- Data from Google stays fresh without spending the free quota: a daily cron (`/api/cron/daily`, scheduled in `vercel.json`) refreshes places not synced for 25 days (Google allows keeping coordinates for 30), oldest first, at most 10 per run. The same run touches the database so the free Supabase project never pauses for inactivity. A place can also be refreshed by hand from its detail. Hours typed in by hand and a mall's hours are never overwritten; places Google reports as closed (permanently or temporarily) show as closed whatever their hours.
 - UI language is English. Design is **Struk v2**: a cashier's receipt on a map (IBM Plex Mono, paper and ink, lime highlighter for open, Barbados red for closing soon).
+
+## Configuration
+
+Environment variables (names only; the values live in `.env.local` and in Vercel, never in the repo):
+
+| Name | Used for |
+|---|---|
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, `NEXT_PUBLIC_GOOGLE_MAP_ID` | the map in the browser |
+| `GOOGLE_PLACES_SERVER_KEY` | Places API calls from the server |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | database and login |
+| `SUPABASE_SECRET_KEY` | the daily cron only (bypasses row-level security) |
+| `CRON_SECRET` | authenticates the cron request that Vercel sends |
 
 ## Versioning
 
@@ -48,3 +61,4 @@ Rules:
 | 0.1.0 | 2026-11-23 | First pushed version: login, curated map, add places from Google, edit (status, per-person rating, tags, notes), time and filter controls, GPS distance and saved starting points, Struk v2 design for web and mobile, light/dark map |
 | 0.1.1 | 2026-11-23 | Mobile sheet fixes: swipe down to collapse it to a small stub, more of the map visible, and the place actions (Open in Google Maps, Edit) always reachable above the iPhone browser bar |
 | 0.1.2 | 2026-11-23 | Pins are rectangles with the closing time and the place name (time part lime when open, Barbados when closing soon, muted when closed; closed pins hide when they overlap); one sheet model for list and place: the header is always the drag handle, a selected place gets its own header with × and its actions, and selecting no longer resizes the sheet |
+| 0.2.0 | 2026-11-23 | Daily cron: keeps the free Supabase project awake and refreshes stale Google data (25 days, max 10 per run); "Refresh" button per place; places Google reports as closed show as closed |

@@ -44,9 +44,20 @@ async function googleFetch<T>(url: string, init: RequestInit & { fieldMask: stri
   })
   if (!res.ok) {
     const body = (await res.text()).slice(0, 500)
-    throw new Error(`Google Places ${res.status}: ${body}`)
+    throw new GooglePlacesError(res.status, `Google Places ${res.status}: ${body}`)
   }
   return (await res.json()) as T
+}
+
+/** A non-2xx answer from Google, with its HTTP status (404 = unknown place_id). */
+export class GooglePlacesError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message)
+    this.name = "GooglePlacesError"
+  }
 }
 
 export type Suggestion = { placeId: string; main: string; secondary: string }

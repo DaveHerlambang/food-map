@@ -29,6 +29,8 @@ export type Place = {
   /** Effective hours (own, or the mall's when inherited). null = unknown. */
   hours: Interval[] | null
   businessStatus: string | null
+  /** When the Google data was last refreshed; null = never (or not from Google). */
+  googleSyncedAt: string | null
   tags: Tag[]
   ratings: { userId: string; rating: number }[]
 }

@@ -17,6 +17,7 @@ type Row = {
   notes: string | null
   hours_source: HoursSource
   business_status: string | null
+  google_synced_at: string | null
   place_hours: { open_min: number; close_min: number }[]
   place_tags: { tags: Tag | null }[]
   place_ratings: { user_id: string; rating: number }[]
@@ -24,7 +25,7 @@ type Row = {
 
 const SELECT = `
   id, google_place_id, name, address, lat, lng, category, kind, parent_id,
-  time_zone, status, notes, hours_source, business_status,
+  time_zone, status, notes, hours_source, business_status, google_synced_at,
   place_hours ( open_min, close_min ),
   place_tags ( tags ( id, name, emoji ) ),
   place_ratings ( user_id, rating )
@@ -98,6 +99,7 @@ export async function getPlaces(): Promise<Place[]> {
     hoursSource: r.hours_source,
     hours: effectiveHours(r),
     businessStatus: r.business_status,
+    googleSyncedAt: r.google_synced_at,
     tags: r.place_tags.flatMap((t) => (t.tags ? [t.tags] : [])),
     ratings: r.place_ratings.map((x) => ({ userId: x.user_id, rating: x.rating })),
   }))
