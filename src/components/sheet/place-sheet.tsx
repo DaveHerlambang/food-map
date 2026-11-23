@@ -2,7 +2,7 @@
 
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react"
 import { cn } from "cn"
-import { useMemo } from "react"
+import { useEffect, useMemo, useRef } from "react"
 import { Mark, VersionStamp, Zigzag } from "@/components/receipt/receipt"
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer"
 import { useBottomInset } from "@/hooks/use-bottom-inset"
@@ -19,6 +19,29 @@ const PEEK_PX = 176 // time buttons, TOTAL OPEN, actions
 const HALF = 0.46
 const FULL = 0.9
 
+/** Approximate visible sheet height in px, for centering the map above it. */
+export function sheetHeightPx(level: SheetLevel, viewportHeight: number): number {
+  switch (level) {
+    case "collapsed":
+      return COLLAPSED_PX
+    case "peek":
+      return PEEK_PX
+    case "half":
+      return HALF * viewportHeight
+    case "full":
+      return FULL * viewportHeight
+  }
+}
+
+/** Scrolls `ref` back to the top whenever `key` changes (list ↔ a place). */
+function useScrollTopOn(key: string) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    ref.current?.scrollTo({ top: 0 })
+  }, [key])
+  return ref
+}
+
 /**
  * Mobile: the receipt slides up from the bottom over the map (non-modal, so the
  * map stays usable). It can be pulled up, or swiped down to a small stub that
@@ -27,15 +50,22 @@ const FULL = 0.9
 export function PlaceSheet({
   level,
   onLevelChange,
+  scrollKey,
   header,
   children,
 }: {
   level: SheetLevel
   onLevelChange: (level: SheetLevel) => void
+  /**
+   * Changes when switching between the list and a place. The body then starts
+   * at the top, so the first pull-down moves the sheet instead of scrolling.
+   */
+  scrollKey: string
   header: React.ReactNode
   children: React.ReactNode
 }) {
   const inset = useBottomInset()
+  const bodyRef = useScrollTopOn(scrollKey)
   const points = useMemo<Record<SheetLevel, number>>(
     () => ({
       collapsed: COLLAPSED_PX + inset,
@@ -64,13 +94,14 @@ export function PlaceSheet({
         <DrawerTitle className="sr-only">Places</DrawerTitle>
         <div className="shrink-0 px-4 pt-1.5">{header}</div>
         {/*
+          The header above never scrolls, so it is always the handle you can drag.
           The popup is always screen-tall and slid down to the current height, so the
           bottom of this scroll area sits `--drawer-snap-point-offset` px BELOW the
           screen. Padding by that amount (plus the iPhone inset) is what lets the end
-          of the content scroll into view. PlaceDetail's action bar reads the same
-          two variables to stay stuck to the visible bottom.
+          of the content scroll into view.
         */}
         <div
+          ref={bodyRef}
           style={
             {
               "--sheet-offset": "var(--drawer-snap-point-offset, 0px)",
@@ -98,12 +129,16 @@ export function SidePanel({
   children,
   collapsed,
   onCollapse,
+  scrollKey,
 }: {
   header: React.ReactNode
   children: React.ReactNode
   collapsed: boolean
   onCollapse: () => void
+  /** changes when switching between the list and a place: scroll back to top */
+  scrollKey: string
 }) {
+  const bodyRef = useScrollTopOn(scrollKey)
   return (
     <aside
       aria-label="Places"
@@ -124,8 +159,12 @@ export function SidePanel({
         >
           <PanelLeftClose className="size-5" />
         </button>
-        <div className="shrink-0 px-6 pt-4">{header}</div>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-6 [scrollbar-color:var(--rule)_transparent] [scrollbar-width:thin]">
+        {/* --header-reserve keeps a place's name clear of the hide button above */}
+        <div className="shrink-0 px-6 pt-4 [--header-reserve:2.25rem]">{header}</div>
+        <div
+          ref={bodyRef}
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-6 [scrollbar-color:var(--rule)_transparent] [scrollbar-width:thin]"
+        >
           {children}
         </div>
         {/* web: pinned to the bottom-left of the panel */}

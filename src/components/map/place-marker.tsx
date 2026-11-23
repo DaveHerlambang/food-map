@@ -1,18 +1,34 @@
 "use client"
 
-import { AdvancedMarker, AdvancedMarkerAnchorPoint } from "@vis.gl/react-google-maps"
+import {
+  AdvancedMarker,
+  AdvancedMarkerAnchorPoint,
+  CollisionBehavior,
+} from "@vis.gl/react-google-maps"
 import { cn } from "cn"
+import type { OpenState } from "@/lib/hours"
 import { pinLabel } from "@/lib/places/format"
 import type { Pin } from "@/lib/places/pins"
 
 /**
- * Pins are little paper price tags on the map (light or dark).
- *   open, visited   → paper tag, lime square, distance
- *   open, wishlist  → dashed outline tag, lime square
- *   closing soon    → paper tag, Barbados square + closing time
- *   closed          → small "VOID"
- *   hours unknown   → small dashed "?"
+ * A pin is one rectangle in two parts: until when you can go, and what it is.
+ *
+ *   [ 02:00 | NASI GORENG CAK MAN ]
+ *
+ * Left (time): lime when open ("02:00" / "24H"), Barbados red when closing soon,
+ * muted "CLOSED" or dashed "--:--" otherwise. Right (name): paper and ink,
+ * truncated with "…" so long names stay short. Distance lives in the list.
+ *
+ * Open and closing-soon pins always show; closed and unknown ones step aside
+ * (hide) when they would overlap another pin, so the city view stays readable.
  */
+const TIME: Record<OpenState["status"], string> = {
+  open: "bg-lime text-ink",
+  closing: "bg-barbados text-paper",
+  closed: "bg-chrome text-pin-dim text-[10px] font-medium",
+  unknown: "bg-chrome text-pin-dim text-[10px] font-medium",
+}
+
 export function PlaceMarker({
   pin,
   selected,
@@ -22,56 +38,52 @@ export function PlaceMarker({
   selected: boolean
   onSelect: (id: string) => void
 }) {
-  const { place, state, trip } = pin
-  const label = pinLabel(state, trip)
-  const open = state.status === "open"
-  const soon = state.status === "closing"
+  const { place, state } = pin
   const dim = state.status === "closed" || state.status === "unknown"
-  const wishlist = place.status === "wishlist"
 
   return (
     <AdvancedMarker
       position={{ lat: place.lat, lng: place.lng }}
       title={place.name}
       anchorPoint={AdvancedMarkerAnchorPoint.CENTER}
-      zIndex={selected ? 1000 : dim ? 1 : soon ? 5 : 10}
+      zIndex={selected ? 1000 : state.status === "open" ? 10 : state.status === "closing" ? 8 : 1}
+      collisionBehavior={
+        selected || !dim
+          ? CollisionBehavior.REQUIRED_AND_HIDES_OPTIONAL
+          : CollisionBehavior.OPTIONAL_AND_HIDES_LOWER_PRIORITY
+      }
       onClick={() => onSelect(place.id)}
     >
-      {/* padding = bigger tap target than the visible tag */}
+      {/* padding = bigger tap target than the visible rectangle */}
       <span className="block p-1.5">
-        {dim ? (
+        <span
+          className={cn(
+            "flex max-w-[13rem] items-stretch overflow-hidden rounded-[3px] border-[1.5px] font-mono leading-none shadow-[0_2px_8px_rgba(0,0,0,0.35)] transition-transform",
+            // ink border keeps it readable on the light map; on the dark map it disappears
+            dim ? "border-pin-dim-border shadow-none" : "border-ink",
+            state.status === "unknown" && "border-dashed",
+            selected && "scale-110 shadow-[0_0_0_2px_var(--chrome),0_0_0_4px_var(--chrome-fg)]",
+          )}
+        >
           <span
             className={cn(
-              "block rounded-sm border border-pin-dim-border bg-chrome px-1.5 py-px font-mono text-[10px] text-pin-dim",
-              state.status === "unknown" && "border-dashed",
-              selected && "border-lime text-chrome-fg shadow-[0_0_0_2px_var(--lime)]",
+              "flex shrink-0 items-center px-1.5 py-[3px] text-[11px] font-bold tabular-nums",
+              TIME[state.status],
             )}
           >
-            {label}
+            {pinLabel(state)}
           </span>
-        ) : (
           <span
             className={cn(
-              "flex items-center gap-1.5 rounded-sm px-2 py-1 font-mono text-[11px] font-bold transition-transform",
-              wishlist && !soon
-                ? "border-[1.5px] border-dashed border-chrome-fg bg-chrome text-chrome-fg"
-                : // ink border: invisible on the dark map, needed on the light one
-                  "border-[1.5px] border-ink bg-paper shadow-[0_3px_10px_rgba(0,0,0,0.35)]",
-              soon ? "text-barbados" : !wishlist && "text-ink",
-              selected && "scale-110 shadow-[0_0_0_3px_var(--lime),0_6px_16px_rgba(0,0,0,0.5)]",
+              "min-w-0 truncate border-l-[1.5px] px-1.5 py-[3px] text-[10px] uppercase tracking-[0.02em]",
+              dim
+                ? "border-pin-dim-border bg-chrome font-medium text-pin-dim"
+                : "border-ink bg-paper font-bold text-ink",
             )}
           >
-            <span
-              aria-hidden="true"
-              className={cn(
-                "size-[9px] shrink-0",
-                open && "bg-lime shadow-[inset_0_0_0_1.5px_var(--ink)]",
-                soon && "bg-barbados",
-              )}
-            />
-            {label}
+            {place.name}
           </span>
-        )}
+        </span>
       </span>
     </AdvancedMarker>
   )

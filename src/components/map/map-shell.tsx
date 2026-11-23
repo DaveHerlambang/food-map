@@ -8,9 +8,16 @@ import { AddPlaceDrawer } from "@/components/add-place/add-place-drawer"
 import { EditPlaceDrawer } from "@/components/edit-place/edit-place-drawer"
 import { FiltersDrawer } from "@/components/filters/filters-drawer"
 import { OriginDrawer } from "@/components/origin/origin-drawer"
-import { PlaceDetail } from "@/components/sheet/place-detail"
+import { Mark, StatusText } from "@/components/receipt/receipt"
+import { PlaceDetail, PlaceHeader } from "@/components/sheet/place-detail"
 import { PlaceList } from "@/components/sheet/place-list"
-import { PanelTab, PlaceSheet, SidePanel, type SheetLevel } from "@/components/sheet/place-sheet"
+import {
+  PanelTab,
+  PlaceSheet,
+  sheetHeightPx,
+  SidePanel,
+  type SheetLevel,
+} from "@/components/sheet/place-sheet"
 import { CollapsedBar, ReceiptHeader, ReceiptTitle } from "@/components/sheet/receipt-header"
 import { logout } from "@/app/login/actions"
 import { useFilters } from "@/hooks/use-filters"
@@ -21,6 +28,7 @@ import { usePersistentFlag } from "@/hooks/use-persistent-flag"
 import { useNow } from "@/hooks/use-now"
 import { activeFilterCount, resolveTarget, targetLabel } from "@/lib/filters"
 import type { LatLng } from "@/lib/geo"
+import { pinLabel, receiptStatus } from "@/lib/places/format"
 import { computePins, sortPins, type Pin, type SortKey } from "@/lib/places/pins"
 import type { Anchor, Person, Place, Tag } from "@/lib/places/types"
 import { DEFAULT_CAMERA, MapCanvas, type Camera } from "./map-canvas"
@@ -122,26 +130,33 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
 
   // ── map focus ──
   /** Centers a point in the part of the map the receipt doesn't cover. */
-  function focus(point: LatLng) {
+  function focus(point: LatLng, sheetLevel: SheetLevel = level) {
     if (!map) return
     map.panTo(point)
     google.maps.event.addListenerOnce(map, "idle", () => {
       if (panelOpen) map.panBy(-SIDE_PANEL_PX / 2, 0)
-      // sheet at "half" covers ~46% of the screen: center in the rest
-      else if (!isDesktop) map.panBy(0, Math.round(window.innerHeight * 0.23))
+      else if (!isDesktop) map.panBy(0, Math.round(sheetHeightPx(sheetLevel, window.innerHeight) / 2))
     })
   }
 
-  /** Shows the details: half-opens the sheet (mobile) or re-opens the panel (web). */
-  function reveal() {
-    if (!isDesktop) setLevel("half")
-    else if (panelHidden) setPanelHidden(false)
+  /**
+   * Makes sure the selected place can be seen. Selecting never changes how far
+   * the sheet is pulled up, except lifting a collapsed one to "peek" (mobile),
+   * or showing a hidden panel (web). Returns the level the sheet ends up at.
+   */
+  function reveal(): SheetLevel {
+    if (isDesktop) {
+      if (panelHidden) setPanelHidden(false)
+      return level
+    }
+    const next = level === "collapsed" ? "peek" : level
+    setLevel(next)
+    return next
   }
 
   function select(pin: Pick<Pin, "place">) {
     setSelectedId(pin.place.id)
-    reveal()
-    focus(pin.place)
+    focus(pin.place, reveal())
   }
 
   // Pan to the GPS fix after the user asked to locate.
@@ -164,7 +179,7 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
     }
   }
 
-  const header = (
+  const listHeader = (
     <ReceiptHeader
       showTitle={isDesktop}
       target={target}
@@ -184,6 +199,37 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
     />
   )
 
+  // One model for list and place: the header is the drag handle and never
+  // scrolls; while a place is open it becomes that place's header (× to close).
+  const header = selected ? (
+    <PlaceHeader pin={selected} onClose={() => setSelectedId(null)} onEdit={() => setEditing(true)} />
+  ) : (
+    listHeader
+  )
+
+  const collapsedBar = selected ? (
+    <CollapsedBar
+      title={selected.place.name}
+      label={`Show ${selected.place.name}`}
+      onExpand={() => setLevel("peek")}
+    >
+      <StatusText tone={receiptStatus(selected.state, selected.t, selected.fits).tone}>
+        {pinLabel(selected.state)}
+      </StatusText>
+    </CollapsedBar>
+  ) : (
+    <CollapsedBar
+      title="FOOD MAP"
+      label={`Show the list (${openCount} of ${matchCount} open)`}
+      onExpand={() => setLevel("peek")}
+    >
+      <span>
+        <Mark>{openCount}</Mark> OPEN
+      </span>
+      <span className="font-normal text-ink-muted">/ {matchCount}</span>
+    </CollapsedBar>
+  )
+
   const body = selected ? (
     <PlaceDetail
       pin={selected}
@@ -191,8 +237,6 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
       originLabel={origin.label}
       people={people}
       userId={userId}
-      onBack={() => setSelectedId(null)}
-      onEdit={() => setEditing(true)}
     />
   ) : (
     <>
@@ -236,7 +280,7 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
             selected={pin.place.id === selectedId}
             onSelect={(id) => {
               setSelectedId(id)
-              if (isDesktop || level === "peek" || level === "collapsed") reveal()
+              reveal()
             }}
           />
         ))}
@@ -293,20 +337,20 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
       </div>
 
       {isDesktop ? (
-        <SidePanel header={header} collapsed={panelHidden} onCollapse={() => setPanelHidden(true)}>
+        <SidePanel
+          header={header}
+          collapsed={panelHidden}
+          onCollapse={() => setPanelHidden(true)}
+          scrollKey={selectedId ?? "list"}
+        >
           {body}
         </SidePanel>
       ) : (
         <PlaceSheet
           level={level}
           onLevelChange={setLevel}
-          header={
-            level === "collapsed" ? (
-              <CollapsedBar openCount={openCount} matchCount={matchCount} onExpand={() => setLevel("peek")} />
-            ) : (
-              header
-            )
-          }
+          scrollKey={selectedId ?? "list"}
+          header={level === "collapsed" ? collapsedBar : header}
         >
           {body}
         </PlaceSheet>
@@ -335,8 +379,7 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
         onAdded={(p) => {
           if ((map?.getZoom() ?? 0) < 15) map?.setZoom(15)
           setSelectedId(p.placeId)
-          reveal()
-          focus(p)
+          focus(p, reveal())
         }}
       />
 

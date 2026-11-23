@@ -1,6 +1,6 @@
 "use client"
 
-import { Navigation, Pencil } from "lucide-react"
+import { Navigation, Pencil, X } from "lucide-react"
 import { cn } from "cn"
 import { Barcode, KV, Rule, StatusText } from "@/components/receipt/receipt"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -11,15 +11,82 @@ import type { Person } from "@/lib/places/types"
 
 const DAY_NAMES = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
 
-/** One place, printed as its own receipt. */
+/**
+ * Header of a selected place: close, name, status, distance and the two actions.
+ * It replaces the list header while a place is open, so it is always the part
+ * you grab to move the sheet (it never scrolls), and the actions can never end
+ * up below the fold or under the browser bar.
+ */
+export function PlaceHeader({
+  pin,
+  onClose,
+  onEdit,
+}: {
+  pin: Pin
+  onClose: () => void
+  onEdit: () => void
+}) {
+  const { place, state, t, trip, fits } = pin
+  const status = receiptStatus(state, t, fits)
+
+  return (
+    <div className="flex flex-col gap-2.5 pb-3">
+      {/* --header-reserve: room for the web panel's own hide button */}
+      <div className="flex items-start gap-1.5 pr-[var(--header-reserve,0px)]">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close this place and go back to the list"
+          title="Close"
+          className="-ml-1.5 flex size-10 shrink-0 items-center justify-center rounded-sm text-ink hover:bg-paper-2"
+        >
+          <X className="size-5" />
+        </button>
+        <div className="min-w-0 flex-1 pt-1">
+          <h2 className="truncate text-[15px] font-bold uppercase leading-snug tracking-[0.04em]">
+            {place.name}
+          </h2>
+          <p className="truncate text-[12px] leading-relaxed">
+            <StatusText tone={status.tone}>{status.text}</StatusText>
+            {trip && (
+              <span className="text-ink-muted">
+                {" "}
+                · ~{receiptKm(trip.km)} · {trip.minutes} MIN
+              </span>
+            )}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex gap-1.5">
+        <a
+          href={mapsDirectionsUrl(place)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(buttonVariants(), "h-12 flex-1 text-xs")}
+        >
+          <Navigation /> Open in Google Maps
+        </a>
+        <Button
+          variant="outline"
+          onClick={onEdit}
+          aria-label="Edit place"
+          className="size-12 [&_svg:not([class*='size-'])]:size-5"
+        >
+          <Pencil />
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+/** The rest of a selected place, printed as its own receipt below the header. */
 export function PlaceDetail({
   pin,
   timeLabel,
   originLabel,
   people,
   userId,
-  onBack,
-  onEdit,
 }: {
   pin: Pin
   /** e.g. "Tonight 00:30" when looking at a future time; null for now */
@@ -27,8 +94,6 @@ export function PlaceDetail({
   originLabel: string
   people: Person[]
   userId: string
-  onBack: () => void
-  onEdit: () => void
 }) {
   const { place, state, t, trip, arrival, fits } = pin
   const status = receiptStatus(state, t, fits)
@@ -47,28 +112,23 @@ export function PlaceDetail({
   const tags = place.tags.map((tag) => `#${tag.name.replace(/\s+/g, "").toUpperCase()}`)
 
   return (
-    <section aria-label={place.name} className="flex flex-col gap-2.5">
+    <section aria-label={`${place.name}, details`} className="flex flex-col gap-2.5">
       <Rule />
-      <button
-        type="button"
-        onClick={onBack}
-        className="-ml-1 self-start rounded-sm px-1 py-1 text-[12px] font-bold text-ink-muted hover:bg-paper-2 hover:text-ink"
-      >
-        &lt; ALL PLACES
-      </button>
-
-      <div className="text-center">
-        <h2 className="text-lg font-bold uppercase leading-tight tracking-[0.06em]">{place.name}</h2>
-        <p className="mt-1 text-[12px] text-ink-muted">
-          {place.status === "visited" ? "VISITED" : "WISHLIST"}
-          {tags.length > 0 && ` · ${tags.join(" ")}`}
-        </p>
-      </div>
+      <p className="text-center text-[12px] text-ink-muted">
+        {place.status === "visited" ? "VISITED" : "WISHLIST"}
+        {tags.length > 0 && ` · ${tags.join(" ")}`}
+      </p>
 
       <Rule />
       <KV label="Status">
         <StatusText tone={status.tone}>
-          {status.tone === "open" ? "OPEN" : status.tone === "soon" ? "CLOSING SOON" : status.tone === "closed" ? "CLOSED" : "UNKNOWN"}
+          {status.tone === "open"
+            ? "OPEN"
+            : status.tone === "soon"
+              ? "CLOSING SOON"
+              : status.tone === "closed"
+                ? "CLOSED"
+                : "UNKNOWN"}
         </StatusText>
       </KV>
       {(state.status === "open" || state.status === "closing") && (
@@ -82,9 +142,7 @@ export function PlaceDetail({
         </KV>
       )}
       <KV label={trip ? "Arrive" : "At"}>
-        <span className="font-bold">
-          {trip ? `~${clock(arrival)}` : (timeLabel ?? "NOW").toUpperCase()}
-        </span>
+        <span className="font-bold">{trip ? `~${clock(arrival)}` : (timeLabel ?? "NOW").toUpperCase()}</span>
       </KV>
       {trip && (
         <KV label="Distance">
@@ -104,6 +162,9 @@ export function PlaceDetail({
           {place.hoursSource === "inherit" && " · MALL"}
         </span>
       </KV>
+      {status.tone === "open" && !trip && (
+        <p className="text-[11px] text-ink-muted">Set where you start to see distance and arrival time.</p>
+      )}
 
       {raters.length > 0 && (
         <>
@@ -138,41 +199,6 @@ export function PlaceDetail({
       <Barcode className="mt-2 self-center" />
       <p className="text-center text-[11px] tracking-[0.14em] text-ink-muted">TERIMA KASIH · SELAMAT MAKAN</p>
       {place.address && <p className="text-center text-[11px] leading-relaxed text-ink-muted">{place.address}</p>}
-
-      {status.tone === "open" && !trip && (
-        <p className="text-center text-[11px] text-ink-muted">
-          Set where you start to see distance and arrival time.
-        </p>
-      )}
-
-      {/*
-        Always within reach: sticks to the bottom of what is visible instead of
-        sitting at the end of a long scroll. On mobile the sheet sets
-        --sheet-offset / --sheet-gap so this clears the iPhone browser bar; on web
-        they are unset (0). The ::before strip paints the gap below the bar so
-        scrolled content doesn't show through it.
-      */}
-      <div className="sticky bottom-[calc(var(--sheet-offset,0px)+var(--sheet-gap,0px))] z-10 mt-2 bg-paper pb-2 pt-2 before:pointer-events-none before:absolute before:inset-x-0 before:top-full before:h-[var(--sheet-gap,0px)] before:bg-paper before:content-['']">
-        <Rule className="mb-2" />
-        <div className="flex gap-1.5">
-          <a
-            href={mapsDirectionsUrl(place)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cn(buttonVariants(), "h-12 flex-1 text-xs")}
-          >
-            <Navigation /> Open in Google Maps
-          </a>
-          <Button
-            variant="outline"
-            onClick={onEdit}
-            aria-label="Edit place"
-            className="size-12 [&_svg:not([class*='size-'])]:size-5"
-          >
-            <Pencil />
-          </Button>
-        </div>
-      </div>
     </section>
   )
 }

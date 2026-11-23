@@ -47,3 +47,4 @@ Rules:
 |---|---|---|
 | 0.1.0 | 2026-11-23 | First pushed version: login, curated map, add places from Google, edit (status, per-person rating, tags, notes), time and filter controls, GPS distance and saved starting points, Struk v2 design for web and mobile, light/dark map |
 | 0.1.1 | 2026-11-23 | Mobile sheet fixes: swipe down to collapse it to a small stub, more of the map visible, and the place actions (Open in Google Maps, Edit) always reachable above the iPhone browser bar |
+| 0.1.2 | 2026-11-23 | Pins are rectangles with the closing time and the place name (time part lime when open, Barbados when closing soon, muted when closed; closed pins hide when they overlap); one sheet model for list and place: the header is always the drag handle, a selected place gets its own header with × and its actions, and selecting no longer resizes the sheet |

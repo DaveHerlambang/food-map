@@ -1,4 +1,4 @@
-import { formatKm, type Trip } from "@/lib/geo"
+import { formatKm } from "@/lib/geo"
 import { DAY, formatClock, type OpenState } from "@/lib/hours"
 import type { Place } from "./types"
 
@@ -39,13 +39,18 @@ export function receiptStatus(state: OpenState, t: number, fits: boolean): { ton
   }
 }
 
-/** Short label on a map pin: distance when open, closing time when soon. */
-export function pinLabel(state: OpenState, trip: Trip | null): string {
-  if (state.status === "unknown") return "?"
-  if (state.status === "closed") return "VOID"
-  if (state.status === "closing") return formatClock(state.closesAt ?? 0)
-  if (trip) return receiptKm(trip.km)
-  return state.closesAt === null ? "24H" : formatClock(state.closesAt)
+/** Time part of a map pin: until when you can go. */
+export function pinLabel(state: OpenState): string {
+  switch (state.status) {
+    case "open":
+      return state.closesAt === null ? "24H" : formatClock(state.closesAt)
+    case "closing":
+      return formatClock(state.closesAt ?? 0)
+    case "closed":
+      return "CLOSED"
+    case "unknown":
+      return "--:--"
+  }
 }
 
 /** "1.2KM", "350M" */

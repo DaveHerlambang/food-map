@@ -34,31 +34,33 @@ export function ReceiptTitle({
 }
 
 /**
- * Mobile, sheet swiped all the way down: just the name and the open count, so
- * the map is almost fully visible. Tap to bring the receipt back.
+ * Mobile, sheet swiped all the way down: one line, so the map is almost fully
+ * visible. Shows the list summary, or the selected place and its closing time.
+ * Tap to bring the receipt back.
  */
 export function CollapsedBar({
-  openCount,
-  matchCount,
+  title,
+  label,
   onExpand,
+  children,
 }: {
-  openCount: number
-  matchCount: number
+  title: string
+  /** accessible name, e.g. "Show the list (3 of 6 open)" */
+  label: string
   onExpand: () => void
+  /** right-hand side: the count or the place's status */
+  children: React.ReactNode
 }) {
   return (
     <button
       type="button"
       onClick={onExpand}
-      aria-label={`Show the list (${openCount} of ${matchCount} open)`}
+      aria-label={label}
       className="flex w-full items-center justify-between gap-3 rounded-sm px-1 pb-2 pt-1 text-left"
     >
-      <span className="text-[13px] font-bold tracking-[0.14em]">FOOD MAP</span>
-      <span className="flex items-center gap-2 text-[13px] font-bold">
-        <span>
-          <Mark>{openCount}</Mark> OPEN
-        </span>
-        <span className="font-normal text-ink-muted">/ {matchCount}</span>
+      <span className="min-w-0 truncate text-[13px] font-bold uppercase tracking-[0.1em]">{title}</span>
+      <span className="flex shrink-0 items-center gap-2 text-[13px] font-bold">
+        {children}
         <ChevronUp aria-hidden="true" className="size-5 text-ink-muted" />
       </span>
     </button>
