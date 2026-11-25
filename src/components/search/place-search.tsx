@@ -17,11 +17,16 @@ export function PlaceSearch({
   onPick,
   placeholder,
   autoFocus,
+  emptyText = "NO RESULTS.",
+  footer,
 }: {
   /** Return an error message to show, or null on success. */
   onPick: (suggestion: Suggestion, sessionToken: string) => Promise<string | null>
   placeholder: string
   autoFocus?: boolean
+  emptyText?: string
+  /** shown under the results, given what was typed */
+  footer?: (query: string) => React.ReactNode
 }) {
   const map = useMap()
   const [query, setQuery] = useState("")
@@ -116,7 +121,7 @@ export function PlaceSearch({
         </p>
       )}
       {loading && results.length === 0 && <p className="text-[13px] text-ink-muted">SEARCHING…</p>}
-      {showEmpty && <p className="text-[13px] text-ink-muted">NO RESULTS.</p>}
+      {showEmpty && <p className="text-[13px] text-ink-muted">{emptyText}</p>}
 
       <ul className="flex-1 overflow-y-auto">
         {results.map((s) => (
@@ -136,6 +141,7 @@ export function PlaceSearch({
           </li>
         ))}
       </ul>
+      {footer?.(query)}
     </div>
   )
 }

@@ -5,7 +5,7 @@ import { getMember } from "@/lib/auth"
 import { isUuid, type LatLng } from "@/lib/geo"
 import { getPlaceDetails } from "@/lib/google/places"
 import { refreshPlaceFromGoogle } from "@/lib/google/refresh"
-import { fromGooglePeriods } from "@/lib/hours"
+import { fromGooglePeriods, mergeIntervals, WEEK, type Interval } from "@/lib/hours"
 import { TAG_SELECT, toTag, type RawTag } from "@/lib/places/queries"
 import type { HoursSource, PlaceStatus, Tag } from "@/lib/places/types"
 import { levelFromGoogle, parseGoogleRange } from "@/lib/price"
@@ -265,6 +265,142 @@ export async function refreshPlace(placeId: string): Promise<ActionResult> {
 
   refresh()
   return { ok: true }
+}
+
+/** Hours from the client, checked and merged; null if anything is off. */
+function cleanIntervals(input: unknown): Interval[] | null {
+  if (!Array.isArray(input) || input.length === 0 || input.length > 50) return null
+  const valid = input.every(
+    (i) =>
+      i !== null &&
+      typeof i === "object" &&
+      Number.isInteger(i.open) &&
+      Number.isInteger(i.close) &&
+      i.open >= 0 &&
+      i.open < WEEK &&
+      i.close > i.open &&
+      i.close - i.open <= WEEK,
+  )
+  return valid ? mergeIntervals((input as Interval[]).map(({ open, close }) => ({ open, close }))) : null
+}
+
+type Supabase = NonNullable<Awaited<ReturnType<typeof getMember>>>["supabase"]
+
+/** Replaces a place's hours. No transactions over the REST API: delete, then insert. */
+async function writeHours(supabase: Supabase, placeId: string, intervals: Interval[]) {
+  const { error: deleteError } = await supabase.from("place_hours").delete().eq("place_id", placeId)
+  if (deleteError) return deleteError
+  const { error } = await supabase
+    .from("place_hours")
+    .insert(intervals.map((i) => ({ place_id: placeId, open_min: i.open, close_min: i.close })))
+  return error
+}
+
+/**
+ * Sets a place's hours by hand. They are yours from then on: Google's
+ * refreshes (manual or the daily cron) never overwrite manual hours.
+ */
+export async function setPlaceHours(placeId: string, intervals: Interval[]): Promise<ActionResult> {
+  const member = await getMember()
+  if (!member) return { ok: false, error: "Not signed in." }
+  const { supabase } = member
+  if (!isUuid(placeId)) return { ok: false, error: "Invalid place." }
+  const clean = cleanIntervals(intervals)
+  if (!clean) return { ok: false, error: "These hours don't look right." }
+
+  const { data: updated, error } = await supabase
+    .from("places")
+    .update({ hours_source: "manual" })
+    .eq("id", placeId)
+    .select("id")
+  if (error) return fail("set hours source", error)
+  if (!updated?.length) return { ok: false, error: "This place no longer exists." }
+
+  const hoursError = await writeHours(supabase, placeId, clean)
+  if (hoursError) {
+    // Never claim hours we don't have.
+    await supabase.from("places").update({ hours_source: "unknown" }).eq("id", placeId)
+    return fail("write hours", hoursError)
+  }
+
+  refresh()
+  return { ok: true }
+}
+
+/** Hands a Google place's hours back to Google and fetches them right away. */
+export async function followGoogleHours(placeId: string): Promise<ActionResult> {
+  const member = await getMember()
+  if (!member) return { ok: false, error: "Not signed in." }
+  const { supabase } = member
+  if (!isUuid(placeId)) return { ok: false, error: "Invalid place." }
+
+  const { data: row, error } = await supabase
+    .from("places")
+    .select("id, google_place_id")
+    .eq("id", placeId)
+    .maybeSingle()
+  if (error) return fail("load place", error)
+  if (!row) return { ok: false, error: "This place no longer exists." }
+  if (!row.google_place_id) return { ok: false, error: "This place isn't on Google." }
+
+  const { error: sourceError } = await supabase.from("places").update({ hours_source: "google" }).eq("id", placeId)
+  if (sourceError) return fail("set hours source", sourceError)
+
+  const result = await refreshPlaceFromGoogle(supabase, {
+    id: row.id,
+    googlePlaceId: row.google_place_id,
+    hoursSource: "google",
+  })
+  refresh()
+  if (!result.ok) {
+    console.error("[places] follow google hours", result.error)
+    return { ok: false, error: "Back on Google's hours, but Google couldn't be reached. They'll update on the next refresh." }
+  }
+  return { ok: true }
+}
+
+export type AddManualResult = ({ ok: true; placeId: string } & LatLng) | { ok: false; error: string }
+
+/**
+ * Adds a place that isn't on Google (or is on Google in the wrong spot): a
+ * name, a pin, and hours if you know them. Google never refreshes it.
+ */
+export async function addManualPlace(input: {
+  name: string
+  lat: number
+  lng: number
+  hours: Interval[] | null
+}): Promise<AddManualResult> {
+  const member = await getMember()
+  if (!member) return { ok: false, error: "Not signed in." }
+  const { supabase } = member
+
+  const name = typeof input.name === "string" ? input.name.trim().replace(/\s+/g, " ") : ""
+  if (!name || name.length > 80) return { ok: false, error: "Give it a name (up to 80 characters)." }
+  const { lat, lng } = input
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+    return { ok: false, error: "Invalid location." }
+  }
+  const hours = input.hours === null ? null : cleanIntervals(input.hours)
+  if (input.hours !== null && !hours) return { ok: false, error: "These hours don't look right." }
+
+  const { data: inserted, error } = await supabase
+    .from("places")
+    .insert({ google_place_id: null, name, lat, lng, hours_source: hours ? "manual" : "unknown" })
+    .select("id")
+    .single()
+  if (error) return fail("insert manual place", error)
+
+  if (hours) {
+    const hoursError = await writeHours(supabase, inserted.id, hours)
+    if (hoursError) {
+      await supabase.from("places").delete().eq("id", inserted.id)
+      return fail("manual place hours", hoursError)
+    }
+  }
+
+  refresh()
+  return { ok: true, placeId: inserted.id, lat, lng }
 }
 
 function fail(step: string, error: { message: string }): { ok: false; error: string } {

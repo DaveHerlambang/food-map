@@ -5,6 +5,8 @@ import { ChevronDown, LocateFixed } from "lucide-react"
 import { cn } from "cn"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { AddPlaceDrawer } from "@/components/add-place/add-place-drawer"
+import { PinPicker } from "@/components/add-place/pin-picker"
+import { HoursDrawer, NewPlaceHoursDrawer, type NewPlace } from "@/components/hours/hours-drawer"
 import { EditPlaceDrawer } from "@/components/edit-place/edit-place-drawer"
 import { FiltersDrawer } from "@/components/filters/filters-drawer"
 import { OriginDrawer } from "@/components/origin/origin-drawer"
@@ -87,6 +89,10 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
   const [editing, setEditing] = useState(false)
   const [filtering, setFiltering] = useState(false)
   const [choosingOrigin, setChoosingOrigin] = useState(false)
+  const [editingHours, setEditingHours] = useState(false)
+  // adding a place by hand: placing the pin, then its hours
+  const [placing, setPlacing] = useState<{ name: string } | null>(null)
+  const [newPlace, setNewPlace] = useState<NewPlace | null>(null)
   // a short message over the map, e.g. when an "added" place was already there
   const [notice, setNotice] = useState<string | null>(null)
   useEffect(() => {
@@ -248,6 +254,7 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
       originLabel={origin.label}
       people={people}
       userId={userId}
+      onEditHours={() => setEditingHours(true)}
     />
   ) : (
     <>
@@ -290,6 +297,7 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
             pin={pin}
             selected={pin.place.id === selectedId}
             onSelect={(id) => {
+              if (placing) return // placing a pin by hand: the map is for moving
               setSelectedId(id)
               reveal()
             }}
@@ -360,7 +368,16 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
         )}
       </div>
 
-      {isDesktop ? (
+      {placing ? (
+        // the receipt steps aside while you place a pin by hand
+        <PinPicker
+          initialName={placing.name}
+          position={geo.position}
+          onLocate={() => geo.locate()}
+          onCancel={() => setPlacing(null)}
+          onNext={(name, at) => setNewPlace({ name, ...at })}
+        />
+      ) : isDesktop ? (
         <SidePanel
           header={header}
           collapsed={panelHidden}
@@ -400,6 +417,13 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
       <AddPlaceDrawer
         open={adding}
         onOpenChange={setAdding}
+        onAddManually={(name) => {
+          setAdding(false)
+          setSelectedId(null)
+          setPlacing({ name })
+          // close enough to put the pin on the right side of the road
+          if ((map?.getZoom() ?? 0) < 16) map?.setZoom(16)
+        }}
         onAdded={(p) => {
           // Same Google place = same place: nothing new is saved, we show the
           // one you have. (Another branch is another Google place, so it adds.)
@@ -420,6 +444,23 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
         open={editing}
         onOpenChange={setEditing}
         onDeleted={() => setSelectedId(null)}
+      />
+
+      <HoursDrawer place={selected?.place} open={editingHours} onOpenChange={setEditingHours} />
+
+      <NewPlaceHoursDrawer
+        place={newPlace}
+        // closing without saving goes back to the pin, which is still where you left it
+        onOpenChange={(open) => {
+          if (!open) setNewPlace(null)
+        }}
+        onCreated={(created) => {
+          setNotice(`Added ${newPlace?.name ?? "the place"}`)
+          setNewPlace(null)
+          setPlacing(null)
+          setSelectedId(created.placeId)
+          focus(created, reveal())
+        }}
       />
     </main>
   )

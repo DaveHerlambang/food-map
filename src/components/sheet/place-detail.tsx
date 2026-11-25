@@ -117,6 +117,7 @@ export function PlaceDetail({
   originLabel,
   people,
   userId,
+  onEditHours,
 }: {
   pin: Pin
   /** e.g. "Tonight 00:30" when looking at a future time; null for now */
@@ -124,6 +125,7 @@ export function PlaceDetail({
   originLabel: string
   people: Person[]
   userId: string
+  onEditHours: () => void
 }) {
   const { place, state, t, trip, arrival } = pin
   const status = pinStatus(pin)
@@ -204,7 +206,15 @@ export function PlaceDetail({
         <span>
           {dayHours.length ? dayHours.join(", ").toUpperCase() : place.hours ? "CLOSED" : "UNKNOWN"}
           {place.hoursSource === "inherit" && " · MALL"}
+          {place.hoursSource === "manual" && <span className="text-ink-muted"> · SET BY YOU</span>}
         </span>
+        <button
+          type="button"
+          onClick={onEditHours}
+          className="-my-2 ml-1 inline-flex h-9 items-center px-1.5 text-[11px] font-bold underline underline-offset-2 hover:bg-paper-2"
+        >
+          {place.hours ? "EDIT" : "SET HOURS"}
+        </button>
       </KV>
       {status.tone === "open" && !trip && (
         <p className="text-[11px] text-ink-muted">Set where you start to see distance and arrival time.</p>
@@ -241,11 +251,11 @@ export function PlaceDetail({
       <p className="text-center text-[11px] tracking-[0.14em] text-ink-muted">TERIMA KASIH · SELAMAT MAKAN</p>
       {place.address && <p className="text-center text-[11px] leading-relaxed text-ink-muted">{place.address}</p>}
 
-      {place.googlePlaceId && (
-        <>
-          <Rule />
-          <GoogleSync placeId={place.id} syncedAt={place.googleSyncedAt} />
-        </>
+      <Rule />
+      {place.googlePlaceId ? (
+        <GoogleSync placeId={place.id} syncedAt={place.googleSyncedAt} />
+      ) : (
+        <p className="text-[11px] leading-relaxed text-ink-muted">ADDED BY HAND · NOT ON GOOGLE. Google never refreshes it.</p>
       )}
     </section>
   )
