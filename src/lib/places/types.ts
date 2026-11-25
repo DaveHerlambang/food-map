@@ -15,6 +15,9 @@ export type Tag = {
   tintsPin: boolean
 }
 
+/** A person's own stars and note on a place. At least one of the two is set. */
+export type Review = { userId: string; rating: number | null; note: string | null }
+
 /** A member of the couple, for showing ratings by name. */
 export type Person = { id: string; name: string }
 
@@ -34,7 +37,6 @@ export type Place = {
   parentId: string | null
   timeZone: string
   status: PlaceStatus
-  notes: string | null
   hoursSource: HoursSource
   /** Effective hours (own, or the mall's when inherited). null = unknown. */
   hours: Interval[] | null
@@ -50,5 +52,6 @@ export type Place = {
   /** Google's price range, e.g. Rp 25.000–50.000 */
   priceRange: PriceRange | null
   tags: Tag[]
-  ratings: { userId: string; rating: number }[]
+  /** One per person who rated it or wrote a note; each person edits only their own. */
+  reviews: Review[]
 }

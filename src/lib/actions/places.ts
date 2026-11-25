@@ -112,15 +112,16 @@ export type ActionResult = { ok: true } | { ok: false; error: string }
 
 export type PlaceEdit = {
   status: PlaceStatus
-  notes: string
   tagIds: number[]
   /** Your own rating; null removes it. */
   rating: number | null
+  /** Your own note; empty removes it. */
+  note: string
   /** Price level you set by hand ($ = 1 … $$$$ = 4); null = use Google's. */
   price: number | null
 }
 
-/** Saves the edit form: status + notes, tag set, and the caller's own rating. */
+/** Saves the edit form: status, price, tag set, and the caller's own rating and note. */
 export async function updatePlace(placeId: string, edit: PlaceEdit): Promise<ActionResult> {
   const member = await getMember()
   if (!member) return { ok: false, error: "Not signed in." }
@@ -130,7 +131,7 @@ export async function updatePlace(placeId: string, edit: PlaceEdit): Promise<Act
   if (edit.status !== "wishlist" && edit.status !== "visited") {
     return { ok: false, error: "Invalid status." }
   }
-  const notes = typeof edit.notes === "string" ? edit.notes.trim().slice(0, 2000) : ""
+  const note = typeof edit.note === "string" ? edit.note.trim().slice(0, 2000) : ""
   const tagIds = Array.isArray(edit.tagIds)
     ? [...new Set(edit.tagIds.filter((id) => Number.isInteger(id) && id > 0))].slice(0, 50)
     : []
@@ -145,7 +146,7 @@ export async function updatePlace(placeId: string, edit: PlaceEdit): Promise<Act
 
   const { data: updated, error } = await supabase
     .from("places")
-    .update({ status: edit.status, notes: notes || null, price_manual: price })
+    .update({ status: edit.status, price_manual: price })
     .eq("id", placeId)
     .select("id")
   if (error) return fail("update place", error)
@@ -167,14 +168,18 @@ export async function updatePlace(placeId: string, edit: PlaceEdit): Promise<Act
     if (addError) return fail("add tags", addError)
   }
 
-  // Rating: per person, so only ever touch the caller's own row.
-  const { error: ratingError } =
-    rating === null
+  // Rating and note: per person, in one row, so only ever touch the caller's
+  // own row. No stars and no note = no row.
+  const { error: reviewError } =
+    rating === null && !note
       ? await supabase.from("place_ratings").delete().eq("place_id", placeId).eq("user_id", userId)
       : await supabase
           .from("place_ratings")
-          .upsert({ place_id: placeId, user_id: userId, rating }, { onConflict: "place_id,user_id" })
-  if (ratingError) return fail("rating", ratingError)
+          .upsert(
+            { place_id: placeId, user_id: userId, rating, comment: note || null },
+            { onConflict: "place_id,user_id" },
+          )
+  if (reviewError) return fail("rating and note", reviewError)
 
   refresh()
   return { ok: true }

@@ -34,7 +34,6 @@ type Row = {
   parent_id: string | null
   time_zone: string
   status: PlaceStatus
-  notes: string | null
   hours_source: HoursSource
   business_status: string | null
   google_synced_at: string | null
@@ -45,16 +44,16 @@ type Row = {
   price_manual: number | null
   place_hours: { open_min: number; close_min: number }[]
   place_tags: { tags: RawTag | null }[]
-  place_ratings: { user_id: string; rating: number }[]
+  place_ratings: { user_id: string; rating: number | null; comment: string | null }[]
 }
 
 const SELECT = `
   id, google_place_id, name, address, lat, lng, category, kind, parent_id,
-  time_zone, status, notes, hours_source, business_status, google_synced_at,
+  time_zone, status, hours_source, business_status, google_synced_at,
   price_level, price_min, price_max, price_currency, price_manual,
   place_hours ( open_min, close_min ),
   place_tags ( tags ( ${TAG_SELECT} ) ),
-  place_ratings ( user_id, rating )
+  place_ratings ( user_id, rating, comment )
 `
 
 /**
@@ -121,7 +120,6 @@ export async function getPlaces(): Promise<Place[]> {
     parentId: r.parent_id,
     timeZone: r.time_zone,
     status: r.status,
-    notes: r.notes,
     hoursSource: r.hours_source,
     hours: effectiveHours(r),
     businessStatus: r.business_status,
@@ -139,6 +137,6 @@ export async function getPlaces(): Promise<Place[]> {
           }
         : null,
     tags: r.place_tags.flatMap((t) => (t.tags ? [toTag(t.tags)] : [])),
-    ratings: r.place_ratings.map((x) => ({ userId: x.user_id, rating: x.rating })),
+    reviews: r.place_ratings.map((x) => ({ userId: x.user_id, rating: x.rating, note: x.comment })),
   }))
 }

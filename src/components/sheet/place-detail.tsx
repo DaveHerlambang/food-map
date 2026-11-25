@@ -1,13 +1,13 @@
 "use client"
 
-import { Navigation, Pencil, X } from "lucide-react"
+import { Bookmark, Check, Navigation, Pencil, X } from "lucide-react"
 import { cn } from "cn"
 import { Barcode, KV, Rule, StatusText } from "@/components/receipt/receipt"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { DAY, formatClock, hoursForDay } from "@/lib/hours"
 import { clock, mapsDirectionsUrl, pinStatus, receiptKm } from "@/lib/places/format"
 import type { Pin } from "@/lib/places/pins"
-import type { Person } from "@/lib/places/types"
+import type { Person, PlaceStatus } from "@/lib/places/types"
 import { dollars, formatPriceRange } from "@/lib/price"
 import { GoogleSync } from "./google-sync"
 
@@ -48,14 +48,17 @@ export function PlaceHeader({
           <h2 className="truncate text-[15px] font-bold uppercase leading-snug tracking-[0.04em]">
             {place.name}
           </h2>
-          <p className="truncate text-[12px] leading-relaxed">
-            <StatusText tone={status.tone}>{status.text}</StatusText>
-            {trip && (
-              <span className="text-ink-muted">
-                {" "}
-                · ~{receiptKm(trip.km)} · {trip.minutes} MIN
-              </span>
-            )}
+          <p className="flex min-w-0 items-center gap-2 pt-0.5 text-[12px] leading-relaxed">
+            <VisitBadge status={place.status} />
+            <span className="min-w-0 truncate">
+              <StatusText tone={status.tone}>{status.text}</StatusText>
+              {trip && (
+                <span className="text-ink-muted">
+                  {" "}
+                  · ~{receiptKm(trip.km)} · {trip.minutes} MIN
+                </span>
+              )}
+            </span>
           </p>
         </div>
       </div>
@@ -82,6 +85,31 @@ export function PlaceHeader({
   )
 }
 
+/**
+ * Been there or not, readable the moment a place opens: solid ink with a check
+ * for visited, a dashed outline with a bookmark for wishlist.
+ */
+function VisitBadge({ status }: { status: PlaceStatus }) {
+  const visited = status === "visited"
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 rounded-sm text-[10px] font-bold leading-none tracking-[0.12em]",
+        visited
+          ? "bg-ink px-1.5 py-[4.5px] text-paper"
+          : "border-[1.5px] border-dashed border-ink px-[4.5px] py-[3px] text-ink",
+      )}
+    >
+      {visited ? (
+        <Check aria-hidden className="size-3" strokeWidth={3} />
+      ) : (
+        <Bookmark aria-hidden className="size-3" strokeWidth={2.5} />
+      )}
+      {visited ? "VISITED" : "WISHLIST"}
+    </span>
+  )
+}
+
 /** The rest of a selected place, printed as its own receipt below the header. */
 export function PlaceDetail({
   pin,
@@ -102,11 +130,11 @@ export function PlaceDetail({
   const day = Math.floor(t / DAY)
   const dayHours = place.hours ? hoursForDay(place.hours, day) : []
 
-  // You first, then your partner; anyone who rated but isn't listed shows as "Partner".
+  // You first, then your partner; anyone who reviewed but isn't listed shows as "Partner".
   const raters: Person[] = [
     ...people.filter((p) => p.id === userId),
     ...people.filter((p) => p.id !== userId),
-    ...place.ratings
+    ...place.reviews
       .filter((r) => !people.some((p) => p.id === r.userId))
       .map((r) => ({ id: r.userId, name: "Partner" })),
   ]
@@ -115,11 +143,13 @@ export function PlaceDetail({
 
   return (
     <section aria-label={`${place.name}, details`} className="flex flex-col gap-2.5">
-      <Rule />
-      <p className="text-center text-[12px] text-ink-muted">
-        {place.status === "visited" ? "VISITED" : "WISHLIST"}
-        {tags.length > 0 && ` · ${tags.join(" ")}`}
-      </p>
+      {/* visited / wishlist now lives in the header badge */}
+      {tags.length > 0 && (
+        <>
+          <Rule />
+          <p className="text-center text-[12px] text-ink-muted">{tags.join(" ")}</p>
+        </>
+      )}
 
       <Rule />
       <KV label="Status">
@@ -184,29 +214,26 @@ export function PlaceDetail({
         <>
           <Rule />
           {raters.map((person) => {
-            const rating = place.ratings.find((r) => r.userId === person.id)?.rating
+            const review = place.reviews.find((r) => r.userId === person.id)
+            const rating = review?.rating
             return (
-              <KV key={person.id} label={person.name}>
-                {rating ? (
-                  <span className="tracking-[0.12em]" aria-label={`${rating} of 5 stars`}>
-                    {"★".repeat(rating)}
-                    <span className="text-rule">{"★".repeat(5 - rating)}</span>
-                  </span>
-                ) : (
-                  <span className="text-ink-muted">NOT RATED</span>
+              <div key={person.id} className="flex flex-col gap-1">
+                <KV label={person.name}>
+                  {rating ? (
+                    <span className="tracking-[0.12em]" aria-label={`${rating} of 5 stars`}>
+                      {"★".repeat(rating)}
+                      <span className="text-rule">{"★".repeat(5 - rating)}</span>
+                    </span>
+                  ) : (
+                    <span className="text-ink-muted">NOT RATED</span>
+                  )}
+                </KV>
+                {review?.note && (
+                  <p className="whitespace-pre-line pl-[2ch] text-[13px] leading-relaxed">“{review.note}”</p>
                 )}
-              </KV>
+              </div>
             )
           })}
-        </>
-      )}
-
-      {place.notes && (
-        <>
-          <Rule />
-          <p className="whitespace-pre-line text-[13px] leading-relaxed">
-            <span className="font-bold">NOTE: </span>“{place.notes}”
-          </p>
         </>
       )}
 

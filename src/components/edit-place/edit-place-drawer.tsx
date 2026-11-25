@@ -64,11 +64,10 @@ function EditForm({
   onDeleted: () => void
 }) {
   const [status, setStatus] = useState<PlaceStatus>(place.status)
-  const [notes, setNotes] = useState(place.notes ?? "")
+  const mine = place.reviews.find((r) => r.userId === userId)
+  const [note, setNote] = useState(mine?.note ?? "")
   const [tagIds, setTagIds] = useState(() => new Set(place.tags.map((t) => t.id)))
-  const [rating, setRating] = useState<number | null>(
-    place.ratings.find((r) => r.userId === userId)?.rating ?? null,
-  )
+  const [rating, setRating] = useState<number | null>(mine?.rating ?? null)
   const [price, setPrice] = useState<number | null>(place.priceManual) // null = AUTO (Google's)
   const [extraTags, setExtraTags] = useState<Tag[]>([]) // created in this session
   const [newTag, setNewTag] = useState("")
@@ -111,10 +110,10 @@ function EditForm({
     startSaving(async () => {
       const result = await updatePlace(place.id, {
         status,
-        notes,
         tagIds: [...tagIds],
         // kept even if switched back to wishlist, so a mis-tap doesn't lose it
         rating,
+        note,
         price,
       })
       if (!result.ok) return setError(result.error)
@@ -253,13 +252,13 @@ function EditForm({
         </section>
 
         <section className="flex flex-col gap-2">
-          <SectionLabel>Note</SectionLabel>
+          <SectionLabel>Your note</SectionLabel>
           <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
             rows={3}
             maxLength={2000}
-            aria-label="Note"
+            aria-label="Your note"
             placeholder="e.g. heard the duck here is great"
             className="w-full rounded-sm border-[1.5px] border-ink bg-transparent px-2.5 py-2 text-base outline-none placeholder:text-ink-muted focus-visible:ring-3 focus-visible:ring-ink/30"
           />

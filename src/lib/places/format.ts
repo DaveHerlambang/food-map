@@ -67,6 +67,20 @@ export function pinLabel(state: OpenState): string {
   }
 }
 
+/** The header line of a pin, as [left, right]: "TIL 02:00", "OPEN 24H", "CLOSED", "HOURS ?". */
+export function pinHeader(state: OpenState): [string, string | null] {
+  switch (state.status) {
+    case "open":
+      return state.closesAt === null ? ["OPEN", "24H"] : ["TIL", formatClock(state.closesAt)]
+    case "closing":
+      return ["TIL", formatClock(state.closesAt ?? 0)]
+    case "closed":
+      return ["CLOSED", null]
+    case "unknown":
+      return ["HOURS", "?"]
+  }
+}
+
 /** "1.2KM", "350M" */
 export const receiptKm = (km: number) => formatKm(km).replace(" ", "").toUpperCase()
 

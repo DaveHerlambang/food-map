@@ -17,11 +17,12 @@ The map shows only our own pins, centered on Surabaya. Not a native app: it runs
 
 - Open state is evaluated at **arrival time** (chosen time + estimated travel time), and a place counts as open only if it stays open for the **whole stay** (default 45 min).
 - Opening hours are stored as minute-of-week intervals `[open, close)`; `close` may exceed 10080 for hours that wrap past Saturday night. Mall tenants without hours of their own inherit the mall's.
-- Ratings are per person; wishlist/visited status is shared.
+- Ratings and notes are per person: each of the two has their own stars and their own note on a place, can read the other's, and can only change their own. A note can be written before rating (e.g. for a wishlist place). Wishlist/visited status is shared.
 - Data from Google stays fresh without spending the free quota: a daily cron (`/api/cron/daily`, scheduled in `vercel.json`) refreshes places not synced for 25 days (Google allows keeping coordinates for 30), oldest first, at most 10 per run. The same run touches the database so the free Supabase project never pauses for inactivity. A place can also be refreshed by hand from its detail. Hours typed in by hand and a mall's hours are never overwritten; places Google reports as closed (permanently or temporarily) show as closed whatever their hours.
-- Tags are grouped by category (type, cuisine, ambient, other) in the pickers. A place with a drink or dessert tag gets a pink pin (name half); closed or unknown ones stay muted. Tag names ignore case, spaces and hyphens, so "Street Food" and `street-food` are the same tag.
+- Tags are grouped by category (type, cuisine, ambient, other) in the pickers. A place with a drink or dessert tag gets a pink pin body; closed or unknown ones stay muted. Tag names ignore case, spaces and hyphens, so "Street Food" and `street-food` are the same tag.
 - Prices follow Google: `$` to `$$$$` (Google's four paid levels) plus Google's price range in rupiah. A level can be set by hand per place and Google's refreshes never overwrite it; the list can be filtered by level.
-- UI language is English. Design is **Struk v2**: a cashier's receipt on a map (IBM Plex Mono, paper and ink, lime highlighter for open, Barbados red for closing soon).
+- A place is one Google place: adding one that is already on the list saves nothing, shows the existing one and says "Already on your list". Another branch of the same restaurant is a different Google place, so it is a different place.
+- UI language is English. Design is **Struk v2**: a cashier's receipt on a map (IBM Plex Mono, paper and ink, lime highlighter for open, Barbados red for closing soon). Map pins are tiny receipts: a header with the closing time, the name on paper, a footer line saying visited or wishlist, a torn bottom edge.
 
 ## Configuration
 
@@ -65,3 +66,4 @@ Rules:
 | 0.1.2 | 2026-11-23 | Pins are rectangles with the closing time and the place name (time part lime when open, Barbados when closing soon, muted when closed; closed pins hide when they overlap); one sheet model for list and place: the header is always the drag handle, a selected place gets its own header with × and its actions, and selecting no longer resizes the sheet |
 | 0.2.0 | 2026-11-23 | Daily cron: keeps the free Supabase project awake and refreshes stale Google data (25 days, max 10 per run); "Refresh" button per place; places Google reports as closed show as closed |
 | 0.3.0 | 2026-11-23 | Tag categories (type, cuisine, ambient, other) with a larger starter set and Coffee merged into cafe; drink and dessert tags tint the pin pink; prices from Google (`$`–`$$$$` and the rupiah range) with a manual override and a price filter |
+| 0.4.0 | 2026-11-25 | A note per person next to their own rating (stars optional, so a wishlist place can have a note); the old shared notes move to the owner; map pins restyled as mini receipts (time header, name, visited/wishlist footer, torn bottom); a visited/wishlist badge in the place header; "Already on your list" when adding a place that is already there |

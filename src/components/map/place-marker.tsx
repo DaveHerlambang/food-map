@@ -5,30 +5,35 @@ import {
   AdvancedMarkerAnchorPoint,
   CollisionBehavior,
 } from "@vis.gl/react-google-maps"
+import { Bookmark, Check } from "lucide-react"
 import { cn } from "cn"
+import type { CSSProperties } from "react"
 import type { OpenState } from "@/lib/hours"
-import { pinLabel } from "@/lib/places/format"
+import { pinHeader } from "@/lib/places/format"
 import type { Pin } from "@/lib/places/pins"
 
 /**
- * A pin is one rectangle in two parts: until when you can go, and what it is.
+ * A pin is a tiny receipt:
  *
- *   [ 02:00 | NASI GORENG CAK MAN ]
+ *   ┌─────────────────┐
+ *   │▐TIL       02:00▌│  header band printed on the paper: asphalt + lime when
+ *   │ NASI GORENG     │  open, Barbados when closing soon. Body: paper, or pink
+ *   │ - - - - - - - - │  for a drink / dessert place.
+ *   │ ✓ VISITED       │  footer: visited (check) or wishlist (bookmark)
+ *   └╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱┘  torn bottom, same color as the body
  *
- * Left (time): lime when open ("02:00" / "24H"), Barbados red when closing soon,
- * muted "CLOSED" or dashed "--:--" otherwise. Right (name): paper and ink,
- * truncated with "…" so long names stay short; pink instead of paper when the
- * place has a tag that tints the pin (drink, dessert) and is open. Closed and
- * unknown pins stay muted whatever their tags. Distance lives in the list.
+ * Closed and unknown pins are muted whatever their tags: no header color, no
+ * shadow ("CLOSED", or a dashed outline and "HOURS ?"). Long names are cut
+ * with "…". Distance lives in the list.
  *
  * Open and closing-soon pins always show; closed and unknown ones step aside
  * (hide) when they would overlap another pin, so the city view stays readable.
  */
-const TIME: Record<OpenState["status"], string> = {
-  open: "bg-lime text-ink",
+const HEADER: Record<OpenState["status"], string> = {
+  open: "bg-asphalt text-lime",
   closing: "bg-barbados text-paper",
-  closed: "bg-chrome text-pin-dim text-[10px] font-medium",
-  unknown: "bg-chrome text-pin-dim text-[10px] font-medium",
+  closed: "border-b border-dashed border-pin-dim-border font-medium text-pin-dim",
+  unknown: "border-b border-dashed border-pin-dim-border font-medium text-pin-dim",
 }
 
 export function PlaceMarker({
@@ -42,11 +47,15 @@ export function PlaceMarker({
 }) {
   const { place, state, tinted } = pin
   const dim = state.status === "closed" || state.status === "unknown"
+  const [left, right] = pinHeader(state)
+  const visited = place.status === "visited"
+  // the body and its torn edge share one color
+  const body = { "--pin-body": dim ? "var(--chrome)" : tinted ? "var(--tint)" : "var(--paper)" } as CSSProperties
 
   return (
     <AdvancedMarker
       position={{ lat: place.lat, lng: place.lng }}
-      title={place.name}
+      title={`${place.name} · ${visited ? "visited" : "wishlist"}`}
       anchorPoint={AdvancedMarkerAnchorPoint.CENTER}
       zIndex={selected ? 1000 : state.status === "open" ? 10 : state.status === "closing" ? 8 : 1}
       collisionBehavior={
@@ -56,35 +65,60 @@ export function PlaceMarker({
       }
       onClick={() => onSelect(place.id)}
     >
-      {/* padding = bigger tap target than the visible rectangle */}
+      {/* padding = bigger tap target than the visible receipt */}
       <span className="block p-1.5">
         <span
+          style={body}
           className={cn(
-            "flex max-w-[13rem] items-stretch overflow-hidden rounded-[3px] border-[1.5px] font-mono leading-none shadow-[0_2px_8px_rgba(0,0,0,0.35)] transition-transform",
-            // ink border keeps it readable on the light map; on the dark map it disappears
-            dim ? "border-pin-dim-border shadow-none" : "border-ink",
-            state.status === "unknown" && "border-dashed",
-            selected && "scale-110 shadow-[0_0_0_2px_var(--chrome),0_0_0_4px_var(--chrome-fg)]",
+            "flex max-w-[13rem] flex-col font-mono leading-none transition-transform",
+            // a drop shadow (not a box shadow) so the torn teeth cast one too
+            // kept tight: a wide blur under the teeth reads as a grey band
+            !dim && "drop-shadow-[0_2px_3px_rgba(0,0,0,0.45)]",
+            selected && "scale-110",
           )}
         >
           <span
             className={cn(
-              "flex shrink-0 items-center px-1.5 py-[3px] text-[11px] font-bold tabular-nums",
-              TIME[state.status],
+              // paper all round, so the dark header reads as printed on the
+              // receipt instead of melting into the dark map
+              "flex min-w-[5.5rem] flex-col bg-(--pin-body) px-[3px] pt-[3px]",
+              dim && "outline-1 -outline-offset-1 outline-pin-dim-border",
+              state.status === "unknown" && "outline-dashed",
+              selected && "shadow-[0_0_0_2px_var(--chrome),0_0_0_4px_var(--chrome-fg)]",
             )}
           >
-            {pinLabel(state)}
+            <span
+              className={cn(
+                "flex justify-between gap-2.5 rounded-[1px] px-1 py-1 text-[10px] font-bold tracking-[0.05em] tabular-nums",
+                HEADER[state.status],
+              )}
+            >
+              <span>{left}</span>
+              {right && <span>{right}</span>}
+            </span>
+            <span
+              className={cn(
+                "truncate px-1 pt-[5px] pb-[3px] text-[10px] uppercase tracking-[0.05em]",
+                dim ? "font-medium text-pin-dim" : "font-bold text-ink",
+              )}
+            >
+              {place.name}
+            </span>
+            <span
+              className={cn(
+                "mx-1 flex items-center gap-1 border-t border-dashed pt-[3px] pb-0.5 text-[8px] font-semibold tracking-[0.12em]",
+                dim ? "border-pin-dim-border text-pin-dim" : "border-ink/35 text-ink",
+              )}
+            >
+              {visited ? (
+                <Check aria-hidden className="size-2" strokeWidth={3.5} />
+              ) : (
+                <Bookmark aria-hidden className="size-2" strokeWidth={3} />
+              )}
+              {visited ? "VISITED" : "WISHLIST"}
+            </span>
           </span>
-          <span
-            className={cn(
-              "min-w-0 truncate border-l-[1.5px] px-1.5 py-[3px] text-[10px] uppercase tracking-[0.02em]",
-              dim
-                ? "border-pin-dim-border bg-chrome font-medium text-pin-dim"
-                : cn("border-ink font-bold text-ink", tinted ? "bg-tint" : "bg-paper"),
-            )}
-          >
-            {place.name}
-          </span>
+          <span aria-hidden className="zigzag-pin" />
         </span>
       </span>
     </AdvancedMarker>

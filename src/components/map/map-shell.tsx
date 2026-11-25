@@ -83,6 +83,13 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
   const [editing, setEditing] = useState(false)
   const [filtering, setFiltering] = useState(false)
   const [choosingOrigin, setChoosingOrigin] = useState(false)
+  // a short message over the map, e.g. when an "added" place was already there
+  const [notice, setNotice] = useState<string | null>(null)
+  useEffect(() => {
+    if (!notice) return
+    const timer = setTimeout(() => setNotice(null), 4000)
+    return () => clearTimeout(timer)
+  }, [notice])
 
   // ── where distances are measured from ──
   const anchor = typeof filters.from === "number" ? anchors.find((a) => a.id === filters.from) : undefined
@@ -336,6 +343,28 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
         </div>
       </div>
 
+      {/* Notice, under the top controls. The live region stays mounted so
+          screen readers announce each new message. */}
+      <div
+        role="status"
+        aria-live="polite"
+        className={cn(
+          "pointer-events-none absolute inset-x-3 top-[calc(max(0.75rem,env(safe-area-inset-top))+3.5rem)] flex justify-center lg:right-5 lg:top-20",
+          panelOpen ? "lg:left-[27rem]" : "lg:left-5",
+        )}
+      >
+        {notice && (
+          <p
+            className={cn(
+              onMap,
+              "h-auto max-w-full px-3 py-2.5 text-xs font-bold uppercase tracking-[0.04em] hover:bg-chrome",
+            )}
+          >
+            <span className="truncate">{notice}</span>
+          </p>
+        )}
+      </div>
+
       {isDesktop ? (
         <SidePanel
           header={header}
@@ -377,6 +406,12 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
         open={adding}
         onOpenChange={setAdding}
         onAdded={(p) => {
+          // Same Google place = same place: nothing new is saved, we show the
+          // one you have. (Another branch is another Google place, so it adds.)
+          if (p.existed) {
+            const name = places.find((x) => x.id === p.placeId)?.name
+            setNotice(name ? `Already on your list: ${name}` : "Already on your list")
+          }
           if ((map?.getZoom() ?? 0) < 15) map?.setZoom(15)
           setSelectedId(p.placeId)
           focus(p, reveal())

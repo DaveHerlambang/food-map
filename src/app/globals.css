@@ -117,6 +117,16 @@
   height: 10px;
   background: conic-gradient(from 135deg at top, var(--paper) 90deg, #0000 0) 0 0 / 12px 100% repeat-x;
 }
+/* Torn bottom of a map pin: 10px teeth, 5px deep, in the pin's own body color
+   (smaller teeth blur into a grey line at 1x). It is 6px tall and pulled up 1px
+   over the body, so the two overlap and no hairline seam shows between them. */
+@utility zigzag-pin {
+  display: block;
+  height: 6px;
+  margin-top: -1px;
+  background: conic-gradient(from -45deg at bottom, var(--pin-body, var(--paper)) 90deg, #0000 0) 0 0 / 10px 100%
+    repeat-x;
+}
 @utility zigzag-bottom {
   height: 10px;
   background: conic-gradient(from -45deg at bottom, var(--paper) 90deg, #0000 0) 0 0 / 12px 100% repeat-x;
