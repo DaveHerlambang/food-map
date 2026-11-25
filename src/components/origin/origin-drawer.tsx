@@ -271,34 +271,53 @@ function AddAnchor({
         </Button>
         <DrawerTitle>Save a location</DrawerTitle>
       </DrawerHeader>
-      <div className="flex min-h-[60dvh] flex-col gap-3 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      {/*
+        Two steps, so the search results get the whole drawer: first where it
+        is, then its name and icon. (With everything on one screen, the icon
+        grid and the Save button squeezed the results to a few pixels.)
+        flex-1 + overflow: whatever doesn't fit scrolls inside the drawer.
+      */}
+      <div className="flex min-h-[60dvh] flex-1 flex-col gap-3 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <Rule />
-        <label className="flex flex-col gap-1.5">
-          <SectionLabel>Name</SectionLabel>
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Her office"
-            maxLength={40}
-            className="h-12 text-base"
-          />
-        </label>
-
-        <SectionLabel className="pt-1">Icon</SectionLabel>
-        <AnchorIconPicker value={icon} onChange={setPickedIcon} />
-
-        <SectionLabel className="pt-1">Location</SectionLabel>
         {spot ? (
-          <div className="flex items-center gap-3 rounded-sm border-[1.5px] border-ink px-3 py-2">
-            <MapPin className="size-5 shrink-0" />
-            <span className="min-w-0 flex-1 truncate text-sm font-bold uppercase">{spot.label}</span>
-            <Button variant="ghost" onClick={() => setSpot(null)} className="h-9 px-2 text-xs">
-              Change
+          <>
+            <SectionLabel>Location</SectionLabel>
+            <div className="flex shrink-0 items-center gap-3 rounded-sm border-[1.5px] border-ink px-3 py-2">
+              <MapPin className="size-5 shrink-0" />
+              <span className="min-w-0 flex-1 truncate text-sm font-bold uppercase">{spot.label}</span>
+              <Button variant="ghost" onClick={() => setSpot(null)} className="h-9 px-2 text-xs">
+                Change
+              </Button>
+            </div>
+
+            <label className="flex flex-col gap-1.5 pt-1">
+              <SectionLabel>Name</SectionLabel>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Her office"
+                maxLength={40}
+                className="h-12 text-base"
+              />
+            </label>
+
+            <SectionLabel className="pt-1">Icon</SectionLabel>
+            <AnchorIconPicker value={icon} onChange={setPickedIcon} />
+
+            {error && (
+              <p role="alert" className="text-[13px] font-bold text-barbados">
+                {error}
+              </p>
+            )}
+
+            <Button className="mt-auto h-12 shrink-0 text-sm" onClick={save} disabled={saving || !name.trim()}>
+              {saving && <LoaderCircle className="animate-spin" />} Save
             </Button>
-          </div>
+          </>
         ) : (
           <>
-            <Button variant="outline" className="h-11 text-xs" onClick={pickCurrentLocation}>
+            <SectionLabel>Where is it?</SectionLabel>
+            <Button variant="outline" className="h-11 shrink-0 text-xs" onClick={pickCurrentLocation}>
               <LocateFixed /> Use my current location
             </Button>
             <p className="text-center text-[11px] tracking-[0.14em] text-ink-muted">— OR SEARCH —</p>
@@ -307,23 +326,21 @@ function AddAnchor({
               onPick={async (s, token) => {
                 const result = await resolvePlaceLocation(s.placeId, token)
                 if (!result.ok) return result.error
-                setSpot({ lat: result.lat, lng: result.lng, label: s.main || result.address || "Selected place" })
+                const label = s.main || result.address || "Selected place"
+                setSpot({ lat: result.lat, lng: result.lng, label })
+                // a head start on the name; you'll usually rename it ("Her office")
+                if (!name.trim() && s.main) setName(s.main.slice(0, 40))
                 setError(null)
                 return null
               }}
             />
+            {error && (
+              <p role="alert" className="text-[13px] font-bold text-barbados">
+                {error}
+              </p>
+            )}
           </>
         )}
-
-        {error && (
-          <p role="alert" className="text-[13px] font-bold text-barbados">
-            {error}
-          </p>
-        )}
-
-        <Button className="mt-auto h-12 text-sm" onClick={save} disabled={saving || !spot || !name.trim()}>
-          {saving && <LoaderCircle className="animate-spin" />} Save
-        </Button>
       </div>
     </>
   )

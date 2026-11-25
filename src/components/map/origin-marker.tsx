@@ -9,8 +9,9 @@ import type { LatLng } from "@/lib/geo"
 
 /**
  * Where distances are measured from, as a round paper stamp with a small name
- * under it: the saved place's own icon (home, work, …), or a lime crosshair
- * that pulses for your live GPS. The stamp's center sits on the spot.
+ * under it: the saved place's own icon (home, work, …) with a paper pulse, or
+ * a lime crosshair with a lime pulse for your live GPS. The stamp's center
+ * sits on the spot.
  */
 export function OriginMarker({
   position,
@@ -40,7 +41,14 @@ export function OriginMarker({
             here ? "bg-lime" : "bg-paper",
           )}
         >
-          {here && <span className="absolute inset-0 animate-ping rounded-full bg-lime/50 motion-reduce:animate-none" />}
+          {/* a pulse so the starting point stands out among the pins: lime for GPS, paper for a saved place */}
+          <span
+            aria-hidden
+            className={cn(
+              "absolute inset-0 animate-ping rounded-full motion-reduce:animate-none",
+              here ? "bg-lime/50" : "bg-paper/60",
+            )}
+          />
           {/* the inner dashed ring of a rubber stamp */}
           <span aria-hidden className="absolute inset-[3px] rounded-full border border-dashed border-ink/45" />
           {here ? (
