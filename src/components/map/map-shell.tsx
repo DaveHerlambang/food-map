@@ -36,6 +36,8 @@ import { DEFAULT_CAMERA, MapCanvas, type Camera } from "./map-canvas"
 import { MapMenu } from "./map-menu"
 import { OriginMarker } from "./origin-marker"
 import { PlaceMarker } from "./place-marker"
+import { ClusterMarker } from "./cluster-marker"
+import { clusterPoints } from "@/lib/places/cluster"
 
 type ShellProps = {
   places: Place[]
@@ -62,6 +64,13 @@ const onMap =
   "flex h-11 items-center justify-center rounded-[4px] bg-paper text-ink shadow-[0_1px_2px_rgba(0,0,0,0.25),0_4px_12px_rgba(0,0,0,0.18)] hover:bg-paper-2"
 
 const SIDE_PANEL_PX = 420 // panel width + margins, for centering the map's visible area
+
+// Phones: pins that would overlap on screen are piled into one receipt stack.
+// The box is a compact pin's footprint plus a little air; closer than that
+// across AND down, they overlap. From this zoom on, there's room for every pin.
+const CLUSTER_BOX = { width: 140, height: 56 }
+const CLUSTER_MAX_ZOOM = 17
+const PRIORITY: Record<Pin["state"]["status"], number> = { open: 3, closing: 2, closed: 1, unknown: 0 }
 
 function Shell({ places, tags, anchors, people, userId }: ShellProps) {
   const map = useMap()
@@ -132,6 +141,72 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
   const openCount = pins.filter((p) => p.matches && p.fits).length
   const matchCount = pins.filter((p) => p.matches).length
   const selected = pins.find((p) => p.place.id === selectedId)
+
+  // ── clusters (phones) ──
+  // Regrouped when the map comes to rest, not on every frame of a zoom.
+  const [zoom, setZoom] = useState<number | null>(null)
+  useEffect(() => {
+    if (!map) return
+    const listener = map.addListener("idle", () => setZoom(map.getZoom() ?? null))
+    return () => listener.remove()
+  }, [map])
+
+  const pinById = new Map(visibleOnMap.map((p) => [p.place.id, p]))
+  const projection =
+    !isDesktop && zoom !== null && zoom < CLUSTER_MAX_ZOOM ? map?.getProjection() : undefined
+  // null = no grouping: every pin on its own (web, close zoom, map not ready)
+  const groups =
+    projection && zoom !== null
+      ? clusterPoints(
+          // the open place stays a pin of its own, never part of a pile
+          visibleOnMap
+            .filter((p) => p.place.id !== selectedId)
+            .flatMap((p) => {
+              const world = projection.fromLatLngToPoint(p.place)
+              return world
+                ? [{ id: p.place.id, x: world.x * 2 ** zoom, y: world.y * 2 ** zoom, priority: PRIORITY[p.state.status] }]
+                : []
+            }),
+          CLUSTER_BOX,
+        )
+      : null
+
+  function renderPin(pin: Pin) {
+    return (
+      <PlaceMarker
+        key={pin.place.id}
+        pin={pin}
+        selected={pin.place.id === selectedId}
+        compact={!isDesktop}
+        onSelect={(id) => {
+          if (placing) return // placing a pin by hand: the map is for moving
+          setSelectedId(id)
+          reveal()
+        }}
+      />
+    )
+  }
+
+  /** Zooms in on a pile until its pins come apart. */
+  function zoomInto(ids: string[]) {
+    if (!map) return
+    const bounds = new google.maps.LatLngBounds()
+    for (const id of ids) {
+      const pin = pinById.get(id)
+      if (pin) bounds.extend(pin.place)
+    }
+    const before = map.getZoom() ?? 0
+    map.fitBounds(bounds, {
+      top: 90,
+      left: 40,
+      right: 40,
+      bottom: Math.round(sheetHeightPx(level, window.innerHeight)) + 40,
+    })
+    google.maps.event.addListenerOnce(map, "idle", () => {
+      // all in (nearly) one spot: fitting doesn't get closer, so just zoom in
+      if ((map.getZoom() ?? 0) <= before) map.setZoom(before + 2)
+    })
+  }
   const filterCount = activeFilterCount(filters)
 
   // Default to distance when we know where you are; you can override it.
@@ -291,19 +366,30 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
         {origin.position && (
           <OriginMarker position={origin.position} kind={origin.kind} label={origin.label} icon={anchor?.icon} />
         )}
-        {visibleOnMap.map((pin) => (
-          <PlaceMarker
-            key={pin.place.id}
-            pin={pin}
-            selected={pin.place.id === selectedId}
-            compact={!isDesktop}
-            onSelect={(id) => {
-              if (placing) return // placing a pin by hand: the map is for moving
-              setSelectedId(id)
-              reveal()
-            }}
-          />
-        ))}
+        {groups
+          ? groups.map((g) => {
+              const seed = pinById.get(g.seed)
+              if (!seed) return null
+              if (g.members.length === 1) return renderPin(seed)
+              const open = g.members.filter((id) => {
+                const status = pinById.get(id)?.state.status
+                return status === "open" || status === "closing"
+              }).length
+              return (
+                <ClusterMarker
+                  key={`cluster-${g.seed}`}
+                  position={seed.place}
+                  total={g.members.length}
+                  open={open}
+                  onClick={() => {
+                    if (!placing) zoomInto(g.members)
+                  }}
+                />
+              )
+            })
+          : visibleOnMap.map(renderPin)}
+        {/* left out of the piles above, so it's always there on its own */}
+        {groups && selected && renderPin(selected)}
       </MapCanvas>
 
       {/* Top: from where · locate · menu (right of the panel on web) */}

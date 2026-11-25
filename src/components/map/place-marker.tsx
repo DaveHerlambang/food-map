@@ -28,7 +28,8 @@ import type { Pin } from "@/lib/places/pins"
  *
  * Open and closing-soon pins always show; closed and unknown ones step aside
  * (hide) when they would overlap another pin, so the city view stays readable.
- * On phones (`compact`) every pin steps aside for a more important one.
+ * On phones (`compact`) pins that would overlap are piled into a ClusterMarker
+ * first; any overlap left (e.g. with the starting point) still steps aside.
  */
 const HEADER: Record<OpenState["status"], string> = {
   open: "bg-asphalt text-lime",
@@ -47,8 +48,7 @@ export function PlaceMarker({
   selected: boolean
   /**
    * Phones: a smaller two-line receipt (the visited/wishlist line shrinks to
-   * an icon before the name), and pins that would overlap step aside for more
-   * important ones until you zoom in. The selected pin is always full size.
+   * an icon before the name). The selected pin is always full size.
    */
   compact?: boolean
   onSelect: (id: string) => void
