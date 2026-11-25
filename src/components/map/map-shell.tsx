@@ -289,13 +289,14 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
         }}
       >
         {origin.position && (
-          <OriginMarker position={origin.position} kind={origin.kind} label={origin.label} />
+          <OriginMarker position={origin.position} kind={origin.kind} label={origin.label} icon={anchor?.icon} />
         )}
         {visibleOnMap.map((pin) => (
           <PlaceMarker
             key={pin.place.id}
             pin={pin}
             selected={pin.place.id === selectedId}
+            compact={!isDesktop}
             onSelect={(id) => {
               if (placing) return // placing a pin by hand: the map is for moving
               setSelectedId(id)

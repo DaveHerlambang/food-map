@@ -1,35 +1,58 @@
 "use client"
 
-import { AdvancedMarker, AdvancedMarkerAnchorPoint } from "@vis.gl/react-google-maps"
+import { AdvancedMarker } from "@vis.gl/react-google-maps"
+import { LocateFixed } from "lucide-react"
+import { cn } from "cn"
+import { AnchorGlyph } from "@/components/origin/anchor-icon"
+import type { AnchorIcon } from "@/lib/anchor-icons"
 import type { LatLng } from "@/lib/geo"
 
-/** Where distances are measured from: a paper dot for GPS, an ink tag for a saved place. */
+/**
+ * Where distances are measured from, as a round paper stamp with a small name
+ * under it: the saved place's own icon (home, work, …), or a lime crosshair
+ * that pulses for your live GPS. The stamp's center sits on the spot.
+ */
 export function OriginMarker({
   position,
   kind,
   label,
+  icon,
 }: {
   position: LatLng
   kind: "here" | "anchor"
   label: string
+  /** a saved place's icon */
+  icon?: AnchorIcon
 }) {
+  const here = kind === "here"
   return (
     <AdvancedMarker
       position={position}
-      title={label}
-      anchorPoint={AdvancedMarkerAnchorPoint.CENTER}
+      title={here ? "You are here" : `Distances from ${label}`}
+      // the stamp is 30px tall: anchor on its center, not on the label below
+      anchorPoint={["50%", "15px"]}
       zIndex={500}
     >
-      {kind === "here" ? (
-        <span className="relative block size-5">
-          <span className="absolute inset-0 animate-ping rounded-full bg-lime/50" />
-          <span className="absolute inset-0 rounded-full border-[3px] border-ink bg-paper shadow-[0_0_0_2px_var(--lime)]" />
+      <span className="flex flex-col items-center gap-[3px] font-mono leading-none">
+        <span
+          className={cn(
+            "relative flex size-[30px] items-center justify-center rounded-full border-[1.5px] border-ink text-ink shadow-[0_2px_6px_rgba(0,0,0,0.4)]",
+            here ? "bg-lime" : "bg-paper",
+          )}
+        >
+          {here && <span className="absolute inset-0 animate-ping rounded-full bg-lime/50 motion-reduce:animate-none" />}
+          {/* the inner dashed ring of a rubber stamp */}
+          <span aria-hidden className="absolute inset-[3px] rounded-full border border-dashed border-ink/45" />
+          {here ? (
+            <LocateFixed aria-hidden className="relative size-3.5" strokeWidth={2.5} />
+          ) : (
+            <AnchorGlyph icon={icon ?? "pin"} className="relative size-3.5" />
+          )}
         </span>
-      ) : (
-        <span className="block whitespace-nowrap rounded-sm border-[1.5px] border-paper bg-ink px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.06em] text-paper shadow-[0_3px_10px_rgba(0,0,0,0.5)]">
-          FROM: {label}
+        <span className="max-w-32 truncate bg-paper px-1 py-0.5 text-[8px] font-bold uppercase tracking-[0.12em] text-ink shadow-[0_1px_3px_rgba(0,0,0,0.35)]">
+          {here ? "YOU" : label}
         </span>
-      )}
+      </span>
     </AdvancedMarker>
   )
 }

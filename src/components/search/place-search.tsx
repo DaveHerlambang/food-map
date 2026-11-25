@@ -25,7 +25,10 @@ export function PlaceSearch({
   placeholder: string
   autoFocus?: boolean
   emptyText?: string
-  /** shown under the results, given what was typed */
+  /**
+   * Shown right under the input, given what was typed. Not under the results:
+   * there it ends up behind the phone keyboard or below a long list.
+   */
   footer?: (query: string) => React.ReactNode
 }) {
   const map = useMap()
@@ -114,6 +117,7 @@ export function PlaceSearch({
         autoComplete="off"
         className="h-12 text-base"
       />
+      {footer?.(query)}
 
       {error && (
         <p role="alert" className="text-[13px] font-bold text-barbados">
@@ -141,7 +145,6 @@ export function PlaceSearch({
           </li>
         ))}
       </ul>
-      {footer?.(query)}
     </div>
   )
 }

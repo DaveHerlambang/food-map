@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowLeft, LoaderCircle, LocateFixed, MapPin, Plus, Trash2 } from "lucide-react"
+import { ArrowLeft, LoaderCircle, LocateFixed, MapPin, Pencil, Plus, Trash2 } from "lucide-react"
 import { cn } from "cn"
 import { useState, useTransition } from "react"
 import { Rule, SectionLabel } from "@/components/receipt/receipt"
@@ -9,7 +9,9 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/u
 import { Input } from "@/components/ui/input"
 import { PlaceSearch } from "@/components/search/place-search"
 import type { Geo } from "@/hooks/use-geolocation"
-import { createAnchor, deleteAnchor, resolvePlaceLocation } from "@/lib/actions/anchors"
+import { createAnchor, deleteAnchor, resolvePlaceLocation, setAnchorIcon } from "@/lib/actions/anchors"
+import { guessAnchorIcon, type AnchorIcon } from "@/lib/anchor-icons"
+import { AnchorGlyph, AnchorIconPicker } from "./anchor-icon"
 import type { LatLng } from "@/lib/geo"
 import type { Anchor } from "@/lib/places/types"
 
@@ -62,8 +64,18 @@ function OriginContent({
 }) {
   const [view, setView] = useState<"list" | "add">("list")
   const [confirmId, setConfirmId] = useState<number | null>(null)
+  const [iconFor, setIconFor] = useState<number | null>(null) // which saved place shows the icon picker
   const [error, setError] = useState<string | null>(null)
   const [busy, startBusy] = useTransition()
+
+  function changeIcon(id: number, icon: AnchorIcon) {
+    startBusy(async () => {
+      const result = await setAnchorIcon(id, icon)
+      if (!result.ok) return setError(result.error)
+      setError(null)
+      setIconFor(null)
+    })
+  }
 
   if (view === "add") {
     return <AddAnchor geo={geo} onBack={() => setView("list")} onSaved={(anchor) => onSelect(anchor.id)} />
@@ -109,26 +121,44 @@ function OriginContent({
         />
 
         {anchors.map((a) => (
-          <Row
-            key={a.id}
-            selected={from === a.id}
-            icon={<MapPin className="size-5" />}
-            title={a.name}
-            onClick={() => onSelect(a.id)}
-            action={
-              <Button
-                variant={confirmId === a.id ? "destructive" : "ghost"}
-                aria-label={`Delete ${a.name}`}
-                disabled={busy}
-                onClick={() => remove(a.id)}
-                onBlur={() => setConfirmId(null)}
-                className={cn("h-10 text-xs", confirmId === a.id ? "px-3" : "w-10")}
-              >
-                <Trash2 />
-                {confirmId === a.id && "Delete?"}
-              </Button>
-            }
-          />
+          <div key={a.id}>
+            <Row
+              selected={from === a.id}
+              icon={<AnchorGlyph icon={a.icon} className="size-5" />}
+              title={a.name}
+              onClick={() => onSelect(a.id)}
+              action={
+                <>
+                  <Button
+                    variant={iconFor === a.id ? "default" : "ghost"}
+                    aria-label={`Change the icon of ${a.name}`}
+                    aria-expanded={iconFor === a.id}
+                    disabled={busy}
+                    onClick={() => setIconFor(iconFor === a.id ? null : a.id)}
+                    className="size-10"
+                  >
+                    <Pencil />
+                  </Button>
+                  <Button
+                    variant={confirmId === a.id ? "destructive" : "ghost"}
+                    aria-label={`Delete ${a.name}`}
+                    disabled={busy}
+                    onClick={() => remove(a.id)}
+                    onBlur={() => setConfirmId(null)}
+                    className={cn("h-10 text-xs", confirmId === a.id ? "px-3" : "w-10")}
+                  >
+                    <Trash2 />
+                    {confirmId === a.id && "Delete?"}
+                  </Button>
+                </>
+              }
+            />
+            {iconFor === a.id && (
+              <div className="border-b-[1.5px] border-dashed border-rule py-3">
+                <AnchorIconPicker value={a.icon} onChange={(icon) => changeIcon(a.id, icon)} disabled={busy} />
+              </div>
+            )}
+          </div>
         ))}
 
         {error && (
@@ -198,6 +228,9 @@ function AddAnchor({
   onSaved: (anchor: Anchor) => void
 }) {
   const [name, setName] = useState("")
+  // follows the name ("Her office" → work) until you pick one yourself
+  const [pickedIcon, setPickedIcon] = useState<AnchorIcon | null>(null)
+  const icon = pickedIcon ?? guessAnchorIcon(name) ?? "pin"
   const [spot, setSpot] = useState<(LatLng & { label: string }) | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saving, startSaving] = useTransition()
@@ -219,7 +252,7 @@ function AddAnchor({
   function save() {
     if (!spot) return setError("Pick a location first.")
     startSaving(async () => {
-      const result = await createAnchor({ name, lat: spot.lat, lng: spot.lng })
+      const result = await createAnchor({ name, lat: spot.lat, lng: spot.lng, icon })
       if (!result.ok) return setError(result.error)
       onSaved(result.anchor)
     })
@@ -250,6 +283,9 @@ function AddAnchor({
             className="h-12 text-base"
           />
         </label>
+
+        <SectionLabel className="pt-1">Icon</SectionLabel>
+        <AnchorIconPicker value={icon} onChange={setPickedIcon} />
 
         <SectionLabel className="pt-1">Location</SectionLabel>
         {spot ? (

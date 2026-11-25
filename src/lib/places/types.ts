@@ -1,4 +1,5 @@
 import type { Interval } from "@/lib/hours"
+import type { AnchorIcon } from "@/lib/anchor-icons"
 import type { PriceRange } from "@/lib/price"
 import type { TagCategory } from "@/lib/tag-categories"
 
@@ -22,7 +23,7 @@ export type Review = { userId: string; rating: number | null; note: string | nul
 export type Person = { id: string; name: string }
 
 /** A saved starting point, e.g. "Her office" or "Home". */
-export type Anchor = { id: number; name: string; lat: number; lng: number }
+export type Anchor = { id: number; name: string; lat: number; lng: number; icon: AnchorIcon }
 
 /** A place as the client sees it, with hours already resolved. */
 export type Place = {

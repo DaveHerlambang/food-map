@@ -10,7 +10,6 @@ import {
 import { Plus } from "lucide-react"
 import { Rule } from "@/components/receipt/receipt"
 import { PlaceSearch } from "@/components/search/place-search"
-import { Button } from "@/components/ui/button"
 import { addPlaceFromGoogle, type AddPlaceResult } from "@/lib/actions/places"
 
 type Added = Extract<AddPlaceResult, { ok: true }>
@@ -39,7 +38,8 @@ export function AddPlaceDrawer({
         </DrawerHeader>
 
         {/* content unmounts when closed, so the search starts fresh each time */}
-        <div className="flex min-h-[55dvh] flex-col gap-3 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        {/* flex-1 so a long result list scrolls inside the drawer instead of being cut off */}
+        <div className="flex min-h-[55dvh] flex-1 flex-col gap-3 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <Rule />
           <PlaceSearch
             autoFocus
@@ -53,13 +53,16 @@ export function AddPlaceDrawer({
             }}
             emptyText="NO MATCH ON GOOGLE."
             footer={(query) => (
-              <div className="flex flex-col gap-2">
-                <Rule />
-                <p className="text-[12px] text-ink-muted">Not on Google, or in the wrong spot? Drop the pin yourself.</p>
-                <Button variant="outline" onClick={() => onAddManually(query.trim())} className="h-11 text-xs">
-                  <Plus /> Add it yourself
-                </Button>
-              </div>
+              <button
+                type="button"
+                onClick={() => onAddManually(query.trim())}
+                className="flex h-11 shrink-0 items-center justify-between gap-2 rounded-sm border-[1.5px] border-dashed border-ink px-3 text-left text-xs font-bold uppercase hover:bg-paper-2"
+              >
+                <span>
+                  Not on Google? <span className="underline underline-offset-2">Add it yourself</span>
+                </span>
+                <Plus className="size-4 shrink-0" />
+              </button>
             )}
           />
         </div>

@@ -1,5 +1,6 @@
 import type { Interval } from "@/lib/hours"
 import { createClient } from "@/lib/supabase/server"
+import { anchorIconOf } from "@/lib/anchor-icons"
 import { tagCategoryOf } from "@/lib/tag-categories"
 import type { Anchor, HoursSource, Person, Place, PlaceStatus, Tag } from "./types"
 
@@ -72,9 +73,12 @@ export async function getPeople(): Promise<Person[]> {
 
 export async function getAnchors(): Promise<Anchor[]> {
   const supabase = await createClient()
-  const { data, error } = await supabase.from("anchors").select("id, name, lat, lng").order("name")
+  const { data, error } = await supabase.from("anchors").select("id, name, lat, lng, icon").order("name")
   if (error) throw new Error(`Failed to load saved locations: ${error.message}`)
-  return data as Anchor[]
+  return (data as (Omit<Anchor, "icon"> & { icon: string | null })[]).map((a) => ({
+    ...a,
+    icon: anchorIconOf(a.icon),
+  }))
 }
 
 export async function getTags(): Promise<Tag[]> {
