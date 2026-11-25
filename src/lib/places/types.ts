@@ -4,7 +4,7 @@ import type { PriceRange } from "@/lib/price"
 import type { TagCategory } from "@/lib/tag-categories"
 
 export type PlaceStatus = "wishlist" | "visited"
-export type HoursSource = "google" | "manual" | "inherit" | "unknown"
+export type HoursSource = "google" | "manual" | "unknown"
 
 export type Tag = {
   id: number
@@ -35,11 +35,10 @@ export type Place = {
   lng: number
   category: string | null
   kind: "food" | "venue"
-  parentId: string | null
   timeZone: string
   status: PlaceStatus
   hoursSource: HoursSource
-  /** Effective hours (own, or the mall's when inherited). null = unknown. */
+  /** Opening hours; null = unknown. */
   hours: Interval[] | null
   businessStatus: string | null
   /** When the Google data was last refreshed; null = never (or not from Google). */

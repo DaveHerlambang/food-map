@@ -26,10 +26,12 @@ import type { Pin } from "@/lib/places/pins"
  * shadow ("CLOSED", or a dashed outline and "HOURS ?"). Long names are cut
  * with "…". Distance lives in the list.
  *
- * Open and closing-soon pins always show; closed and unknown ones step aside
- * (hide) when they would overlap another pin, so the city view stays readable.
- * On phones (`compact`) pins that would overlap are piled into a ClusterMarker
- * first; any overlap left (e.g. with the starting point) still steps aside.
+ * Web: open and closing-soon pins always show; closed and unknown ones step
+ * aside (hide) when they would overlap another pin, so the city view stays
+ * readable. Phones (`compact`): pins that would overlap are piled into a
+ * ClusterMarker instead, measured by what you see of each pin, so every pin
+ * left on its own always shows (hiding would go by the bigger tap area and
+ * make pins vanish that don't touch).
  */
 const HEADER: Record<OpenState["status"], string> = {
   open: "bg-asphalt text-lime",
@@ -71,9 +73,11 @@ export function PlaceMarker({
       collisionBehavior={
         selected
           ? CollisionBehavior.REQUIRED_AND_HIDES_OPTIONAL
-          : compact || dim
-            ? CollisionBehavior.OPTIONAL_AND_HIDES_LOWER_PRIORITY
-            : CollisionBehavior.REQUIRED_AND_HIDES_OPTIONAL
+          : compact
+            ? CollisionBehavior.REQUIRED
+            : dim
+              ? CollisionBehavior.OPTIONAL_AND_HIDES_LOWER_PRIORITY
+              : CollisionBehavior.REQUIRED_AND_HIDES_OPTIONAL
       }
       onClick={() => onSelect(place.id)}
     >

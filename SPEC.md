@@ -4,7 +4,7 @@
 
 A private, mobile-first web app for two people to answer one question late at night:
 **which of the places we curated are open (now, or at a chosen time) and closest to us?**
-The map shows only our own pins, centered on Surabaya. Not a native app: it runs in the browser on iPhone and Android.
+The map shows only our own pins, centered on Surabaya. Not a native app: it runs in the browser on iPhone and Android, and can be added to the home screen to open full screen like an app (no offline mode: opening hours must be fresh).
 
 ## Stack
 
@@ -16,16 +16,26 @@ The map shows only our own pins, centered on Surabaya. Not a native app: it runs
 ## Product rules
 
 - Open state is evaluated at **arrival time** (chosen time + estimated travel time), and a place counts as open only if it stays open for the **whole stay** (default 45 min).
-- Opening hours are stored as minute-of-week intervals `[open, close)`; `close` may exceed 10080 for hours that wrap past Saturday night. Mall tenants without hours of their own inherit the mall's.
+- Opening hours are stored as minute-of-week intervals `[open, close)`; `close` may exceed 10080 for hours that wrap past Saturday night.
 - Ratings and notes are per person: each of the two has their own stars and their own note on a place, can read the other's, and can only change their own. A note can be written before rating (e.g. for a wishlist place). Wishlist/visited status is shared.
-- Data from Google stays fresh without spending the free quota: a daily cron (`/api/cron/daily`, scheduled in `vercel.json`) refreshes places not synced for 25 days (Google allows keeping coordinates for 30), oldest first, at most 10 per run. The same run touches the database so the free Supabase project never pauses for inactivity. A place can also be refreshed by hand from its detail. Hours typed in by hand and a mall's hours are never overwritten; places Google reports as closed (permanently or temporarily) show as closed whatever their hours.
+- Data from Google stays fresh without spending the free quota: a daily cron (`/api/cron/daily`, scheduled in `vercel.json`) refreshes places not synced for 25 days (Google allows keeping coordinates for 30), oldest first, at most 10 per run. The same run touches the database so the free Supabase project never pauses for inactivity. A place can also be refreshed by hand from its detail. Hours typed in by hand are never overwritten; places Google reports as closed (permanently or temporarily) show as closed whatever their hours.
 - Tags are grouped by category (type, cuisine, ambient, other) in the pickers. A place with a drink or dessert tag gets a pink pin body; closed or unknown ones stay muted. Tag names ignore case, spaces and hyphens, so "Street Food" and `street-food` are the same tag.
 - Prices follow Google: `$` to `$$$$` (Google's four paid levels) plus Google's price range in rupiah. A level can be set by hand per place and Google's refreshes never overwrite it; the list can be filtered by level.
 - A place that isn't on Google (or is in the wrong spot there) can be added by hand: a name and a pin placed on the map, then its hours. Google never refreshes it.
 - Hours can be set by hand for any place with the "usual hours" editor: one set of hours, the days it opens, and the days that differ; a closing time at or before the opening time closes the next day. Hours set by hand are never overwritten by Google; a Google place can be handed back to Google's hours.
 - A saved starting point has an icon (home, work, campus, gym, family, café, favorite, other), picked when saving it (guessed from the name) and changeable later. On the map, the starting point is a round paper stamp with that icon and its name; your live GPS is a lime stamp with a crosshair.
+- Everything on the map can be exported from the menu as one JSON file (places with their hours, prices, tags and both people's ratings and notes; tags; saved starting points), as a backup kept outside the database.
 - A place is one Google place: adding one that is already on the list saves nothing, shows the existing one and says "Already on your list". Another branch of the same restaurant is a different Google place, so it is a different place.
-- UI language is English. Design is **Struk v2**: a cashier's receipt on a map (IBM Plex Mono, paper and ink, lime highlighter for open, Barbados red for closing soon). Controls on the map are borderless paper tiles (starting point, locate, and a menu holding light/dark and sign out). Map pins are tiny receipts: a header with the closing time, the name on paper, a footer line saying visited or wishlist, a torn bottom edge. On phones they are smaller (two lines, visited/wishlist as an icon before the name), the selected one stays full size, and pins that would overlap are piled into a little stack of receipts showing how many places it holds and how many are open; tapping it zooms in until they come apart.
+- UI language is English. Design is **Struk v2**: a cashier's receipt on a map (IBM Plex Mono, paper and ink, lime highlighter for open, Barbados red for closing soon). Controls on the map are borderless paper tiles (starting point, locate, and a menu holding light/dark, export and sign out). Map pins are tiny receipts: a header with the closing time, the name on paper, a footer line saying visited or wishlist, a torn bottom edge. On phones they are smaller (two lines, visited/wishlist as an icon before the name), the selected one stays full size, and pins that would overlap (measured by each pin's own size, so short names can sit closer) are piled into a little stack of receipts showing how many places it holds and how many are open; tapping it zooms in until they come apart.
+
+## Roadmap
+
+| Version | Contents |
+|---|---|
+| 0.8.0 | Home screen app (PWA), data export, error and not-found pages, clusters tightened on phones |
+| 1.0.0 | Deployed to Vercel after 1–2 weeks of real use, with what that use turns up fixed |
+
+`1.0.0` is reached when: both members use it on their own phones for 1–2 weeks; every curated place is on the map with hours (from Google or set by hand); the daily cron has run on Vercel without errors; and no known bug loses or hides data.
 
 ## Configuration
 
@@ -46,7 +56,7 @@ The app follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 | Part | Format | Bump when | Examples |
 |---|---|---|---|
 | **Major** | `x.0.0` | Breaking change: a database change that needs a manual migration or can lose data, or a rework of the core flow | new schema that existing data cannot be migrated to; replacing the time/arrival model |
-| **Minor** | `0.x.0` | New feature, backwards compatible | manual hours editor, daily Google refresh, mall tenants |
+| **Minor** | `0.x.0` | New feature, backwards compatible | manual hours editor, daily Google refresh, data export |
 | **Patch** | `0.0.x` | Bug fix or small tweak, no new behavior | wrong status line, spacing, copy, a color |
 
 Rules:
@@ -75,3 +85,4 @@ Rules:
 | 0.6.0 | 2026-11-25 | "Add it yourself" sits right under the search box, so the phone keyboard or a long result list can no longer hide it; long result lists scroll inside the drawer; starting points are round stamps on the map, and saved starting points get an icon (home, work, …); smaller pins on phones, where overlapping pins step aside until you zoom in |
 | 0.6.1 | 2026-11-25 | "Save a location" in two steps (where it is, then its name and icon), so search results are no longer squeezed under the Save button on phones; the name starts from the chosen search result; a saved starting point pulses (paper) like the GPS one (lime), so it stands out among the pins |
 | 0.7.0 | 2026-11-25 | On phones, pins that would overlap are grouped into a receipt stack (how many open, how many places; muted when none is open) instead of hiding; tap it to zoom in until they come apart; the selected place is never grouped |
+| 0.8.0 | 2026-11-25 | Add to the home screen as an app (full screen, receipt-pin icon); Export data in the menu saves everything as one JSON file; receipt-style error and not-found pages; phone clusters measure each pin by its own size, so pins pile up only when they really overlap and the rest always show; mall tenants dropped from the plan and the code |

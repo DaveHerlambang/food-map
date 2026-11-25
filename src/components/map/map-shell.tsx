@@ -37,7 +37,7 @@ import { MapMenu } from "./map-menu"
 import { OriginMarker } from "./origin-marker"
 import { PlaceMarker } from "./place-marker"
 import { ClusterMarker } from "./cluster-marker"
-import { clusterPoints } from "@/lib/places/cluster"
+import { clusterPoints, COMPACT_PIN, compactPinWidth } from "@/lib/places/cluster"
 
 type ShellProps = {
   places: Place[]
@@ -66,9 +66,10 @@ const onMap =
 const SIDE_PANEL_PX = 420 // panel width + margins, for centering the map's visible area
 
 // Phones: pins that would overlap on screen are piled into one receipt stack.
-// The box is a compact pin's footprint plus a little air; closer than that
-// across AND down, they overlap. From this zoom on, there's room for every pin.
-const CLUSTER_BOX = { width: 140, height: 56 }
+// Each pin is measured by its own name (compactPinWidth), plus a few pixels of
+// air; closer than that across AND down, they overlap. From this zoom on,
+// there's room for every pin.
+const CLUSTER_GAP = { x: 4, y: 2 }
 const CLUSTER_MAX_ZOOM = 17
 const PRIORITY: Record<Pin["state"]["status"], number> = { open: 3, closing: 2, closed: 1, unknown: 0 }
 
@@ -164,10 +165,19 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
             .flatMap((p) => {
               const world = projection.fromLatLngToPoint(p.place)
               return world
-                ? [{ id: p.place.id, x: world.x * 2 ** zoom, y: world.y * 2 ** zoom, priority: PRIORITY[p.state.status] }]
+                ? [
+                    {
+                      id: p.place.id,
+                      x: world.x * 2 ** zoom,
+                      y: world.y * 2 ** zoom,
+                      w: compactPinWidth(p.place.name),
+                      h: COMPACT_PIN.h,
+                      priority: PRIORITY[p.state.status],
+                    },
+                  ]
                 : []
             }),
-          CLUSTER_BOX,
+          CLUSTER_GAP,
         )
       : null
 
@@ -429,7 +439,7 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
           >
             <LocateFixed className={cn("size-5", geo.status === "locating" && "animate-pulse")} />
           </button>
-          <MapMenu theme={theme} onToggleTheme={toggleTheme} className={onMap} />
+          <MapMenu theme={theme} onToggleTheme={toggleTheme} onNotice={setNotice} className={onMap} />
         </div>
       </div>
 

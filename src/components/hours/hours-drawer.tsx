@@ -18,7 +18,6 @@ import { HoursEditor } from "./hours-editor"
 const SOURCE_NOTE: Record<Place["hoursSource"], string> = {
   google: "From Google. Saving here makes them yours: Google's refreshes won't change them.",
   manual: "Set by you. Google's refreshes never change them.",
-  inherit: "Following the mall. Saving here gives it hours of its own.",
   unknown: "Not known yet.",
 }
 

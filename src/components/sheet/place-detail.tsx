@@ -205,7 +205,6 @@ export function PlaceDetail({
       <KV label={`Hours (${DAY_NAMES[day]})`}>
         <span>
           {dayHours.length ? dayHours.join(", ").toUpperCase() : place.hours ? "CLOSED" : "UNKNOWN"}
-          {place.hoursSource === "inherit" && " · MALL"}
           {place.hoursSource === "manual" && <span className="text-ink-muted"> · SET BY YOU</span>}
         </span>
         <button

@@ -22,7 +22,7 @@ export function isStale(syncedAt: string | null, now: number): boolean {
 
 /**
  * Opening hours are only overwritten when Google is their source. Hours typed
- * in by hand ("manual") and a mall's hours ("inherit") are never replaced.
+ * in by hand ("manual") are never replaced (nor the unused "inherit").
  */
 export function refreshesHours(source: string): boolean {
   return source === "google" || source === "unknown"

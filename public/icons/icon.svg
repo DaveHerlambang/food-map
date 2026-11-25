@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Food Map app icon: the map's mini receipt pin on asphalt.
+       Rendered to the PNGs next to it (icon-192, icon-512, maskable-512, apple-touch-icon). -->
+  <rect width="100" height="100" fill="#17171A"/>
+  <g id="receipt">
+    <path d="M24 20H76V70L70.8 76L65.6 70L60.4 76L55.2 70L50 76L44.8 70L39.6 76L34.4 70L29.2 76L24 70Z" fill="#F1EDE4"/>
+    <rect x="28" y="24" width="44" height="15" rx="1" fill="#CDD78A"/>
+    <text x="50" y="35" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-weight="700" font-size="10" letter-spacing="1" fill="#1D1D1F">OPEN</text>
+    <rect x="30" y="45" width="36" height="5" fill="#1D1D1F"/>
+    <rect x="30" y="53" width="24" height="5" fill="#1D1D1F"/>
+    <line x1="30" y1="64" x2="70" y2="64" stroke="#1D1D1F" stroke-opacity="0.4" stroke-width="1.2" stroke-dasharray="2.5 2"/>
+  </g>
+</svg>

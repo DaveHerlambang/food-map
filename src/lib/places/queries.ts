@@ -32,10 +32,9 @@ type Row = {
   lng: number
   category: string | null
   kind: "food" | "venue"
-  parent_id: string | null
   time_zone: string
   status: PlaceStatus
-  hours_source: HoursSource
+  hours_source: HoursSource | "inherit"
   business_status: string | null
   google_synced_at: string | null
   price_level: number | null
@@ -49,7 +48,7 @@ type Row = {
 }
 
 const SELECT = `
-  id, google_place_id, name, address, lat, lng, category, kind, parent_id,
+  id, google_place_id, name, address, lat, lng, category, kind,
   time_zone, status, hours_source, business_status, google_synced_at,
   price_level, price_min, price_max, price_currency, price_manual,
   place_hours ( open_min, close_min ),
@@ -95,22 +94,17 @@ export async function getPlaces(): Promise<Place[]> {
   if (error) throw new Error(`Failed to load places: ${error.message}`)
 
   const rows = data as unknown as Row[]
-  const byId = new Map(rows.map((r) => [r.id, r]))
 
-  // Own hours, or null when we don't know them.
-  const ownHours = (r: Row): Interval[] | null =>
-    r.hours_source === "google" || r.hours_source === "manual"
+  // The hours, or null when we don't know them. "inherit" (a mall tenant
+  // following its mall) is left over from the first schema and no longer
+  // used: such a place reads as hours unknown.
+  const source = (r: Row): HoursSource => (r.hours_source === "inherit" ? "unknown" : r.hours_source)
+  const hoursOf = (r: Row): Interval[] | null =>
+    source(r) === "google" || source(r) === "manual"
       ? r.place_hours
           .map((h) => ({ open: h.open_min, close: h.close_min }))
           .sort((a, b) => a.open - b.open)
       : null
-
-  // Mall tenants inherit their mall's hours (one level deep).
-  const effectiveHours = (r: Row): Interval[] | null => {
-    if (r.hours_source !== "inherit") return ownHours(r)
-    const parent = r.parent_id ? byId.get(r.parent_id) : undefined
-    return parent ? ownHours(parent) : null
-  }
 
   return rows.map((r) => ({
     id: r.id,
@@ -121,11 +115,10 @@ export async function getPlaces(): Promise<Place[]> {
     lng: r.lng,
     category: r.category,
     kind: r.kind,
-    parentId: r.parent_id,
     timeZone: r.time_zone,
     status: r.status,
-    hoursSource: r.hours_source,
-    hours: effectiveHours(r),
+    hoursSource: source(r),
+    hours: hoursOf(r),
     businessStatus: r.business_status,
     googleSyncedAt: r.google_synced_at,
     priceLevel: r.price_manual ?? r.price_level,

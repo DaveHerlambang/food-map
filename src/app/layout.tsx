@@ -12,6 +12,12 @@ const plex = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "Food Map",
   description: "Our curated late-night food map",
+  // iPhone "Add to Home Screen": full screen, the map runs under the status bar
+  appleWebApp: { capable: true, title: "Food Map", statusBarStyle: "black-translucent" },
+  icons: {
+    icon: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
 };
 
 export const viewport: Viewport = {
