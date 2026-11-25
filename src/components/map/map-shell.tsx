@@ -1,7 +1,7 @@
 "use client"
 
 import { APIProvider, useMap } from "@vis.gl/react-google-maps"
-import { ChevronDown, LocateFixed, LogOut, Moon, Sun } from "lucide-react"
+import { ChevronDown, LocateFixed } from "lucide-react"
 import { cn } from "cn"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { AddPlaceDrawer } from "@/components/add-place/add-place-drawer"
@@ -19,7 +19,6 @@ import {
   type SheetLevel,
 } from "@/components/sheet/place-sheet"
 import { CollapsedBar, ReceiptHeader, ReceiptTitle } from "@/components/sheet/receipt-header"
-import { logout } from "@/app/login/actions"
 import { useFilters } from "@/hooks/use-filters"
 import { useGeolocation } from "@/hooks/use-geolocation"
 import { useMapTheme } from "@/hooks/use-map-theme"
@@ -32,6 +31,7 @@ import { pinLabel, pinStatus } from "@/lib/places/format"
 import { computePins, sortPins, type Pin, type SortKey } from "@/lib/places/pins"
 import type { Anchor, Person, Place, Tag } from "@/lib/places/types"
 import { DEFAULT_CAMERA, MapCanvas, type Camera } from "./map-canvas"
+import { MapMenu } from "./map-menu"
 import { OriginMarker } from "./origin-marker"
 import { PlaceMarker } from "./place-marker"
 
@@ -52,8 +52,12 @@ export function MapShell(props: ShellProps) {
 }
 
 /** Controls floating on the map (colors follow the light/dark map theme). */
+/**
+ * Controls floating on the map: borderless paper tiles with a soft shadow,
+ * paper on both map themes so they belong with the receipt, not the map.
+ */
 const onMap =
-  "flex h-11 items-center justify-center rounded-sm border-[1.5px] border-chrome-fg bg-chrome text-chrome-fg shadow-[0_3px_12px_rgba(0,0,0,0.35)] hover:bg-chrome-hover"
+  "flex h-11 items-center justify-center rounded-[4px] bg-paper text-ink shadow-[0_1px_2px_rgba(0,0,0,0.25),0_4px_12px_rgba(0,0,0,0.18)] hover:bg-paper-2"
 
 const SIDE_PANEL_PX = 420 // panel width + margins, for centering the map's visible area
 
@@ -293,7 +297,7 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
         ))}
       </MapCanvas>
 
-      {/* Top: from where · locate · sign out (right of the panel on web) */}
+      {/* Top: from where · locate · menu (right of the panel on web) */}
       <div
         className={cn(
           "pointer-events-none absolute inset-x-3 top-[max(0.75rem,env(safe-area-inset-top))] flex items-start justify-between gap-2 lg:right-5 lg:top-5",
@@ -309,8 +313,13 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
             onClick={() => setChoosingOrigin(true)}
             className={cn(onMap, "min-w-0 gap-2 px-3 text-xs font-bold uppercase tracking-[0.04em]")}
           >
+            {/* lime dot = your live location is being used */}
+            {origin.kind === "here" && origin.position && (
+              <span aria-hidden className="size-2 shrink-0 rounded-full bg-lime shadow-[0_0_0_1.5px_var(--ink)]" />
+            )}
+            <span className="shrink-0 text-[9px] tracking-[0.14em] text-ink-muted">FROM</span>
             <span className="truncate">
-              FROM: {origin.label}
+              {origin.label}
               {origin.kind === "here" && !origin.position && " (OFF)"}
             </span>
             <ChevronDown className="size-4 shrink-0" />
@@ -325,21 +334,7 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
           >
             <LocateFixed className={cn("size-5", geo.status === "locating" && "animate-pulse")} />
           </button>
-          <button
-            type="button"
-            onClick={toggleTheme}
-            aria-label={theme === "dark" ? "Switch to light map" : "Switch to dark map"}
-            title={theme === "dark" ? "Light map" : "Dark map"}
-            className={cn(onMap, "w-11")}
-          >
-            {theme === "dark" ? <Sun className="size-5" /> : <Moon className="size-5" />}
-          </button>
-          {/* TEMPORARY sign-out until the real menu exists */}
-          <form action={logout}>
-            <button type="submit" aria-label="Sign out" className={cn(onMap, "w-11")}>
-              <LogOut className="size-5" />
-            </button>
-          </form>
+          <MapMenu theme={theme} onToggleTheme={toggleTheme} className={onMap} />
         </div>
       </div>
 
@@ -357,7 +352,7 @@ function Shell({ places, tags, anchors, people, userId }: ShellProps) {
           <p
             className={cn(
               onMap,
-              "h-auto max-w-full px-3 py-2.5 text-xs font-bold uppercase tracking-[0.04em] hover:bg-chrome",
+              "h-auto max-w-full px-3 py-2.5 text-xs font-bold uppercase tracking-[0.04em] hover:bg-paper",
             )}
           >
             <span className="truncate">{notice}</span>

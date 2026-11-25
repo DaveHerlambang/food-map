@@ -22,7 +22,7 @@ The map shows only our own pins, centered on Surabaya. Not a native app: it runs
 - Tags are grouped by category (type, cuisine, ambient, other) in the pickers. A place with a drink or dessert tag gets a pink pin body; closed or unknown ones stay muted. Tag names ignore case, spaces and hyphens, so "Street Food" and `street-food` are the same tag.
 - Prices follow Google: `$` to `$$$$` (Google's four paid levels) plus Google's price range in rupiah. A level can be set by hand per place and Google's refreshes never overwrite it; the list can be filtered by level.
 - A place is one Google place: adding one that is already on the list saves nothing, shows the existing one and says "Already on your list". Another branch of the same restaurant is a different Google place, so it is a different place.
-- UI language is English. Design is **Struk v2**: a cashier's receipt on a map (IBM Plex Mono, paper and ink, lime highlighter for open, Barbados red for closing soon). Map pins are tiny receipts: a header with the closing time, the name on paper, a footer line saying visited or wishlist, a torn bottom edge.
+- UI language is English. Design is **Struk v2**: a cashier's receipt on a map (IBM Plex Mono, paper and ink, lime highlighter for open, Barbados red for closing soon). Controls on the map are borderless paper tiles (starting point, locate, and a menu holding light/dark and sign out). Map pins are tiny receipts: a header with the closing time, the name on paper, a footer line saying visited or wishlist, a torn bottom edge.
 
 ## Configuration
 
@@ -67,3 +67,4 @@ Rules:
 | 0.2.0 | 2026-11-23 | Daily cron: keeps the free Supabase project awake and refreshes stale Google data (25 days, max 10 per run); "Refresh" button per place; places Google reports as closed show as closed |
 | 0.3.0 | 2026-11-23 | Tag categories (type, cuisine, ambient, other) with a larger starter set and Coffee merged into cafe; drink and dessert tags tint the pin pink; prices from Google (`$`–`$$$$` and the rupiah range) with a manual override and a price filter |
 | 0.4.0 | 2026-11-25 | A note per person next to their own rating (stars optional, so a wishlist place can have a note); the old shared notes move to the owner; map pins restyled as mini receipts (time header, name, visited/wishlist footer, torn bottom); a visited/wishlist badge in the place header; "Already on your list" when adding a place that is already there |
+| 0.4.1 | 2026-11-25 | Map controls restyled as quiet paper tiles: the starting point shows a lime dot while your location is live, and light/dark and sign out move into a menu, leaving only the starting point, locate and the menu on the map |
