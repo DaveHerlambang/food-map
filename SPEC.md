@@ -37,6 +37,11 @@ The map shows only our own pins, centered on Surabaya. Not a native app: it runs
 
 `1.0.0` is reached when: both members use it on their own phones for 1–2 weeks; every curated place is on the map with hours (from Google or set by hand); the daily cron has run on Vercel without errors; and no known bug loses or hides data.
 
+## Documentation
+
+- `README.md` is the public overview of the app: what it does, how it is built, how to run the checks. It stays general: no names, no places or locations of the owners, no mention of who the app is for.
+- `docs/screenshots/` holds the README's screenshots. They show the real interface (the real map, pins, receipt and sheet components) filled with made-up places and people, never real data. Retake them when the look changes.
+
 ## Configuration
 
 Environment variables (names only; the values live in `.env.local` and in Vercel, never in the repo):
@@ -87,3 +92,4 @@ Rules:
 | 0.7.0 | 2026-11-25 | On phones, pins that would overlap are grouped into a receipt stack (how many open, how many places; muted when none is open) instead of hiding; tap it to zoom in until they come apart; the selected place is never grouped |
 | 0.8.0 | 2026-11-25 | Add to the home screen as an app (full screen, receipt-pin icon); Export data in the menu saves everything as one JSON file; receipt-style error and not-found pages; phone clusters measure each pin by its own size, so pins pile up only when they really overlap and the rest always show; mall tenants dropped from the plan and the code |
 | 0.8.1 | 2026-11-25 | Splash screen: the sign-in receipt (name, barcode, SELAMAT MAKAN) on asphalt, as the iPhone's start-up picture at every screen size and as the loading screen while the map loads, with the barcode scanning |
+| 0.8.2 | 2026-11-25 | README rewritten as a public overview with screenshots (web and phone, taken from the real interface with made-up places and people); a pile of pins on phones now counts at its drawn size, so it never covers a neighbouring pin |

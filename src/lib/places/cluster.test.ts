@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
-import { clusterPoints, compactPinWidth, COMPACT_PIN, overlaps, type ScreenPoint } from "./cluster.ts"
+import { clusterPoints, compactPinWidth, COMPACT_PIN, overlaps, PILE_SIZE, type ScreenPoint } from "./cluster.ts"
 
 const gap = { x: 4, y: 2 }
 // a 100 × 37 pin unless told otherwise
@@ -47,19 +47,32 @@ describe("clusterPoints", () => {
     assert.equal(clusterPoints(long, gap).length, 1)
   })
 
-  test("seeds never overlap, so groups never sit on top of each other", () => {
+  test("what is drawn never overlaps: a pile counts as big as it looks", () => {
     const pts = Array.from({ length: 40 }, (_, i) =>
       pt(`p${i}`, (i * 37) % 400, (i * 53) % 300, i % 3, 72 + ((i * 17) % 64)),
     )
     const groups = clusterPoints(pts, gap)
-    const seeds = groups.map((g) => pts.find((p) => p.id === g.seed)!)
-    for (const a of seeds) {
-      for (const b of seeds) {
+    const drawn = groups.map((g) => {
+      const seed = pts.find((p) => p.id === g.seed)!
+      return g.members.length > 1 ? { ...seed, w: PILE_SIZE.w, h: PILE_SIZE.h } : seed
+    })
+    for (const a of drawn) {
+      for (const b of drawn) {
         if (a !== b) assert.ok(!overlaps(a, b, gap))
       }
     }
     // and every pin is in exactly one group
     assert.equal(groups.flatMap((g) => g.members).length, pts.length)
+  })
+
+  test("a pile that would cover a neighbour takes it in", () => {
+    // a and b overlap (a pile). c is 48 below: clear of a 37 px pin (39 needed),
+    // but within the 60 px pile (51 needed: half of 60 and half of 37, plus the gap), so it joins.
+    const joined = clusterPoints([pt("a", 0, 0, 3), pt("b", 20, 10, 2), pt("c", 0, 48, 1)], gap)
+    assert.equal(joined.length, 1)
+    assert.deepEqual([...joined[0].members].sort(), ["a", "b", "c"])
+    // far enough below the pile, c stays alone
+    assert.equal(clusterPoints([pt("a", 0, 0, 3), pt("b", 20, 10, 2), pt("c", 0, 70, 1)], gap).length, 2)
   })
 
   test("same input, same groups", () => {

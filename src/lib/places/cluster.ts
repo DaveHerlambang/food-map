@@ -20,7 +20,11 @@ export type Gap = { x: number; y: number }
  * Sizes are per pin: two short names can sit closer together than two long
  * ones before they're piled up.
  */
-export function clusterPoints(points: readonly ScreenPoint[], gap: Gap): Cluster[] {
+export function clusterPoints(
+  points: readonly ScreenPoint[],
+  gap: Gap,
+  pile: { w: number; h: number } = PILE_SIZE,
+): Cluster[] {
   const ordered = [...points].sort((a, b) => b.priority - a.priority || a.id.localeCompare(b.id))
   const groups: { seed: ScreenPoint; members: string[] }[] = []
   for (const p of ordered) {
@@ -28,8 +32,35 @@ export function clusterPoints(points: readonly ScreenPoint[], gap: Gap): Cluster
     if (home) home.members.push(p.id)
     else groups.push({ seed: p, members: [p.id] })
   }
+
+  // A pile is drawn bigger than a lone pin is tall (it's a stack of receipts),
+  // so it can cover a neighbour the pins alone would clear. Join any groups
+  // whose drawn boxes touch, until none do. Groups are in priority order, so
+  // the lower index keeps the seed.
+  const drawn = (g: { seed: ScreenPoint; members: string[] }): ScreenPoint =>
+    g.members.length > 1 ? { ...g.seed, w: pile.w, h: pile.h } : g.seed
+  let merged = true
+  while (merged) {
+    merged = false
+    outer: for (let i = 0; i < groups.length; i++) {
+      for (let j = i + 1; j < groups.length; j++) {
+        if (overlaps(drawn(groups[i]), drawn(groups[j]), gap)) {
+          groups[i].members.push(...groups[j].members)
+          groups.splice(j, 1)
+          merged = true
+          break outer
+        }
+      }
+    }
+  }
   return groups.map((g) => ({ seed: g.seed.id, members: g.members }))
 }
+
+/**
+ * The drawn size of a pile (ClusterMarker): 60 px of paper plus the two
+ * sheets peeking out 4 and 8 px, 60 px tall. Keep in step with cluster-marker.tsx.
+ */
+export const PILE_SIZE = { w: 68, h: 60 }
 
 export function overlaps(a: ScreenPoint, b: ScreenPoint, gap: Gap): boolean {
   return (
