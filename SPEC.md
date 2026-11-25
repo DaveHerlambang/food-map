@@ -4,7 +4,7 @@
 
 A private, mobile-first web app for two people to answer one question late at night:
 **which of the places we curated are open (now, or at a chosen time) and closest to us?**
-The map shows only our own pins, centered on Surabaya. Not a native app: it runs in the browser on iPhone and Android, and can be added to the home screen to open full screen like an app (no offline mode: opening hours must be fresh).
+The map shows only our own pins, centered on Surabaya. Not a native app: it runs in the browser on iPhone and Android, and can be added to the home screen to open full screen like an app (no offline mode: opening hours must be fresh). It opens on a splash screen, the sign-in receipt without the form, which stays while the map loads (its barcode scans); the iPhone shows a still picture of it while the app starts.
 
 ## Stack
 
@@ -86,3 +86,4 @@ Rules:
 | 0.6.1 | 2026-11-25 | "Save a location" in two steps (where it is, then its name and icon), so search results are no longer squeezed under the Save button on phones; the name starts from the chosen search result; a saved starting point pulses (paper) like the GPS one (lime), so it stands out among the pins |
 | 0.7.0 | 2026-11-25 | On phones, pins that would overlap are grouped into a receipt stack (how many open, how many places; muted when none is open) instead of hiding; tap it to zoom in until they come apart; the selected place is never grouped |
 | 0.8.0 | 2026-11-25 | Add to the home screen as an app (full screen, receipt-pin icon); Export data in the menu saves everything as one JSON file; receipt-style error and not-found pages; phone clusters measure each pin by its own size, so pins pile up only when they really overlap and the rest always show; mall tenants dropped from the plan and the code |
+| 0.8.1 | 2026-11-25 | Splash screen: the sign-in receipt (name, barcode, SELAMAT MAKAN) on asphalt, as the iPhone's start-up picture at every screen size and as the loading screen while the map loads, with the barcode scanning |

@@ -94,12 +94,16 @@ export function ReceiptCard({ children, className }: { children: React.ReactNode
 
 const BARS = [2, 4, 1, 3, 1, 2, 4, 1, 2, 3, 1, 4, 2, 1, 3, 2, 1, 4, 2, 1, 3, 1, 2, 4]
 
-/** Decorative barcode. */
-export function Barcode({ className }: { className?: string }) {
+/** Decorative barcode. `scanning`: a fade runs across it (the loading splash). */
+export function Barcode({ className, scanning = false }: { className?: string; scanning?: boolean }) {
   return (
     <div aria-hidden="true" className={cn("flex h-7 gap-[2px]", className)}>
       {BARS.map((w, i) => (
-        <span key={i} className="bg-ink" style={{ width: w }} />
+        <span
+          key={i}
+          className={cn("bg-ink", scanning && "animate-barcode-scan motion-reduce:animate-none")}
+          style={{ width: w, animationDelay: scanning ? `${i * 50}ms` : undefined }}
+        />
       ))}
     </div>
   )

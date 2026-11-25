@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono } from "next/font/google";
+import { splashStartupImages } from "@/lib/splash-screens";
 import "./globals.css";
 
 // Struk v2: one typeface, like a receipt printer.
@@ -13,7 +14,16 @@ export const metadata: Metadata = {
   title: "Food Map",
   description: "Our curated late-night food map",
   // iPhone "Add to Home Screen": full screen, the map runs under the status bar
-  appleWebApp: { capable: true, title: "Food Map", statusBarStyle: "black-translucent" },
+  appleWebApp: {
+    capable: true,
+    title: "Food Map",
+    statusBarStyle: "black-translucent",
+    // the iPhone shows these while the app starts (it ignores the manifest)
+    startupImage: splashStartupImages,
+  },
+  // Next writes only the standard "mobile-web-app-capable"; older iPhones
+  // need Apple's own name to open full screen and show the start-up pictures
+  other: { "apple-mobile-web-app-capable": "yes" },
   icons: {
     icon: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
     apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],

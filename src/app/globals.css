@@ -132,6 +132,22 @@
   background: conic-gradient(from -45deg at bottom, var(--paper) 90deg, #0000 0) 0 0 / 12px 100% repeat-x;
 }
 
+/* The splash barcode while the map loads: a fade runs across the bars, left
+   to right (each bar gets its own delay). Bars start fully printed, so the
+   still splash image the iPhone shows first hands over without a flicker. */
+@theme {
+  --animate-barcode-scan: barcode-scan 1.6s ease-in-out infinite;
+  @keyframes barcode-scan {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    40% {
+      opacity: 0.2;
+    }
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

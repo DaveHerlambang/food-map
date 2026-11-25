@@ -1,6 +1,7 @@
 import { connection } from "next/server"
 import { redirect } from "next/navigation"
 import { Suspense } from "react"
+import { SplashScreen } from "@/components/receipt/splash-screen"
 import { MapShell } from "@/components/map/map-shell"
 import { getMember } from "@/lib/auth"
 import { getAnchors, getPeople, getPlaces, getTags } from "@/lib/places/queries"
@@ -9,7 +10,7 @@ import { getAnchors, getPeople, getPlaces, getTags } from "@/lib/places/queries"
 // Components validates segments independently).
 export default function HomePage() {
   return (
-    <Suspense fallback={<div className="h-dvh bg-map" />}>
+    <Suspense fallback={<SplashScreen />}>
       <PlacesMap />
     </Suspense>
   )

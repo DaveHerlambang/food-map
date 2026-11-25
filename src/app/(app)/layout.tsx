@@ -1,5 +1,6 @@
 import { connection } from "next/server"
 import { Suspense } from "react"
+import { SplashScreen } from "@/components/receipt/splash-screen"
 import { logout } from "@/app/login/actions"
 import { ReceiptCard, Rule } from "@/components/receipt/receipt"
 import { Button } from "@/components/ui/button"
@@ -10,7 +11,7 @@ import { getMember } from "@/lib/auth"
 // (Cache Components) instead of at the top level of the layout.
 export default function AppLayout({ children }: LayoutProps<"/">) {
   return (
-    <Suspense fallback={<div className="h-dvh bg-map" />}>
+    <Suspense fallback={<SplashScreen />}>
       <MemberGate>{children}</MemberGate>
     </Suspense>
   )

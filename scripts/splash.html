@@ -1,0 +1,64 @@
+<!doctype html>
+<!--
+  The iPhone home screen splash: a still copy of SplashScreen
+  (src/components/receipt/splash-screen.tsx). Keep the two in step.
+  Rendered to public/splash/*.png at every iPhone screen size by
+  scripts/render-splash.sh.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&display=block">
+<style>
+  html, body { margin: 0; background: #17171a; }
+  /* the screen is sized from the URL (#390x844): headless browsers keep a
+     minimum window width, so centering in the window would be off */
+  .screen {
+    width: 390px; height: 844px;
+    display: flex; align-items: center; justify-content: center;
+    color: #1d1d1f;
+    font-family: "IBM Plex Mono", monospace; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  p { margin: 0; }
+  .card { width: 240px; filter: drop-shadow(0 12px 32px rgba(0, 0, 0, 0.55)); }
+  .zz-top { height: 10px; background: conic-gradient(from 135deg at top, #f1ede4 90deg, #0000 0) 0 0 / 12px 100% repeat-x; }
+  .zz-bottom { height: 10px; background: conic-gradient(from -45deg at bottom, #f1ede4 90deg, #0000 0) 0 0 / 12px 100% repeat-x; }
+  .paper { display: flex; flex-direction: column; align-items: center; gap: 12px; background: #f1ede4; padding: 28px 24px; }
+  .name { font-size: 18px; line-height: 28px; font-weight: 700; letter-spacing: 0.16em; padding-left: 0.16em; }
+  .small { font-size: 10px; letter-spacing: 0.12em; color: #5f5b53; }
+  .rule { align-self: stretch; border-top: 1.5px dashed #b9b2a4; }
+  .barcode { display: flex; height: 28px; gap: 2px; }
+  .barcode span { background: #1d1d1f; }
+</style>
+</head>
+<body>
+  <div class="screen" id="screen">
+  <div class="card">
+    <div class="zz-top"></div>
+    <div class="paper">
+      <p class="name">FOOD MAP</p>
+      <p class="small">A TABLE FOR TWO</p>
+      <div class="rule"></div>
+      <div class="barcode" id="barcode"></div>
+      <p class="small">SELAMAT MAKAN</p>
+    </div>
+    <div class="zz-bottom"></div>
+  </div>
+  </div>
+  <script>
+    const size = /^#(\d+)x(\d+)$/.exec(location.hash)
+    if (size) {
+      const screen = document.getElementById("screen")
+      screen.style.width = size[1] + "px"
+      screen.style.height = size[2] + "px"
+    }
+    // same bars as Barcode in src/components/receipt/receipt.tsx
+    for (const w of [2, 4, 1, 3, 1, 2, 4, 1, 2, 3, 1, 4, 2, 1, 3, 2, 1, 4, 2, 1, 3, 1, 2, 4]) {
+      const bar = document.createElement("span")
+      bar.style.width = w + "px"
+      document.getElementById("barcode").append(bar)
+    }
+  </script>
+</body>
+</html>
